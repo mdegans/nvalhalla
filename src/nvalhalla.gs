@@ -163,15 +163,26 @@ class NValhalla: Object
 #if DEBUG
 		debug(@"got new pad $(src_pad.name) from $(src.name)")
 #endif
+		// if not a video/NVMM pad, reject it
+		src_caps:Gst.Caps = src_pad.query_caps(null)
+		src_pad_struct:weak Gst.Structure = src_caps.get_structure(0)
+		src_pad_type:string = src_pad_struct.get_name()
+		if not src_pad_type.has_prefix("video/x-raw")
+#if DEBUG
+			debug(@"$(src_pad.name) is not a video pad. skipping.")
+#endif
+			return
+
 		self._sources_linked_mutex.lock()
 		sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._sources_linked)")
 		if sink_pad == null
 			error("could not request sink pad from stream muxer")
 		if not src_pad.can_link(sink_pad)
-#if DEBUG
 			// possibly incompatible
-			debug(@"ignoring $(src_pad.name) becuase it cannot link to $(sink_pad.name)")
-#endif
+			warning(@"could not link $(src_pad.name) even though it should be compatible with $(sink_pad.name)")
+			//  adding the release in this case seems right, but the pipeline stalls
+			//  instead, I will just check caps first so we shouldn't reach here
+			//  self._muxer.release_request_pad(sink_pad)
 			self._sources_linked_mutex.unlock()
 			return
 		ret:Gst.PadLinkReturn = src_pad.link(sink_pad)
