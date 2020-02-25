@@ -57,8 +57,9 @@ class NValhalla: Object
 	// pipeline and elements:
 	_pipeline:Gst.Pipeline
 	_sources:list of Gst.Element
-	// may need to lock sources_linked
+	// sources_linked needs to be locked during use, or it's possible to request identical pads
 	_sources_linked:int
+	_sources_linked_mutex:GLib.Mutex
 	_muxer:Gst.Element
 	_tiler:Gst.Element
 	_sink:Gst.Element
@@ -93,6 +94,7 @@ class NValhalla: Object
 		// make a new list of sources (Gee.ArrayList)
 		self._sources = new list of Gst.Element
 		self._sources_linked = 0
+		self._sources_linked_mutex = GLib.Mutex()
 
 		// setup the stream muxer to link sources to
 		self._muxer = Gst.ElementFactory.make("nvstreammux", "muxer")
@@ -161,6 +163,7 @@ class NValhalla: Object
 #if DEBUG
 		debug(@"got new pad $(src_pad.name) from $(src.name)")
 #endif
+		self._sources_linked_mutex.lock()
 		sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._sources_linked)")
 		if sink_pad == null
 			error("could not request sink pad from stream muxer")
@@ -169,13 +172,17 @@ class NValhalla: Object
 			// possibly incompatible
 			debug(@"ignoring $(src_pad.name) becuase it cannot link to $(sink_pad.name)")
 #endif
+			self._sources_linked_mutex.unlock()
 			return
 		ret:Gst.PadLinkReturn = src_pad.link(sink_pad)
 		if ret == Gst.PadLinkReturn.OK
 			self._sources_linked++
 			self._muxer.set_property("batch-size", self._sources_linked)
+			// todo, update tiler, add live add support
+			self._sources_linked_mutex.unlock()
 			return
 		else
+			self._sources_linked_mutex.unlock()
 			error(@"pad link between $(src_pad.name) and $(sink_pad.name) failed because: $ret")
 
 
