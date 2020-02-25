@@ -43,6 +43,9 @@ class SignalHandler
 		return Source.REMOVE
 
 
+// TODO(mdegans): create various inference Bins, as well as various sink bins (network, tiler)
+
+
 class NValhalla: Object
 	// app stuff
 	_loop:GLib.MainLoop
@@ -164,6 +167,7 @@ class NValhalla: Object
 		debug(@"got new pad $(src_pad.name) from $(src.name)")
 #endif
 		// if not a video/NVMM pad, reject it
+		// https://valadoc.org/gstreamer-1.0/Gst.Pad.query_caps.html
 		src_caps:Gst.Caps = src_pad.query_caps(null)
 		src_pad_struct:weak Gst.Structure = src_caps.get_structure(0)
 		src_pad_type:string = src_pad_struct.get_name()
@@ -177,6 +181,12 @@ class NValhalla: Object
 		sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._sources_linked)")
 		if sink_pad == null
 			error("could not request sink pad from stream muxer")
+		if sink_pad.is_linked()
+			warning(@"attempt to link $(src_pad.name) to already linked pad
+$(sink_pad.name). sources_linked counter is off. incrementing.")
+			self._sources_linked++
+			self._sources_linked_mutex.unlock()
+			return
 		if not src_pad.can_link(sink_pad)
 			// possibly incompatible
 			warning(@"could not link $(src_pad.name) even though it should be compatible with $(sink_pad.name)")
