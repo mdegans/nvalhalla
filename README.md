@@ -18,8 +18,12 @@ mkdir build
 cd build
 meson ..
 ninja
+sudo ninja install
 ```
-When the build is complete, the nvalhalla executable can be found in `build/src/` nvalhalla can be run in it's build location with ./nvalhalla or copied to any user or global bin folder (eg. `~/bin`, `~/.local/bin`, or `/usr/local/bin`)
+
+(this installs to `/usr/local` prefix, same as make)
+
+`sudo ninja uninstall` can be used to uninstall
 
 ## Examples
 
