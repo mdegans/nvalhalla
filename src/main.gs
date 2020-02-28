@@ -32,6 +32,21 @@
 // indent = 0 uses tabs
 [indent = 0]
 
+def static ensure_config_dir(): string?
+	// TODO(mdegans): handle system user case with no homedir
+	home:string = GLib.Environment.get_home_dir()
+	config_dir:string = GLib.Path.build_path("/", home, ".nvalhalla")
+	ret:int = GLib.DirUtils.create_with_parents(config_dir, 493)  // 493 == 0o0755
+	if ret != 0  // 0 == success
+		warning(@"not able to create $config_dir (code: $ret)")
+		return null
+	return config_dir
+
 init
-	var app = new NValhalla(args, null)
+	config_dir:string? = ensure_config_dir()
+	if config_dir != null
+		GLib.Environ.set_variable(null, "GST_DEBUG_DUMP_DOT_DIR", config_dir, false)
+
+	// create the app instance and run it
+	var app = new NValhalla.App(args, null)
 	app.run()
