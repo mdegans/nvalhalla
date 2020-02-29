@@ -62,7 +62,7 @@ namespace NValhalla.Bins
 
 		// Redaction elements:
 		pie:Gst.Element
-		//  osdconv:Gst.Element
+		osdconv:Gst.Element
 		//  osdcaps:Gst.Element
 		osd:Gst.Element
 
@@ -109,18 +109,25 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvinfer element")
 			self.pie.set_property("config-file-path", pie_config != null ? pie_config : DEFAULT_PIE_CONFIG)
 
-			// create the osd and connect the on_buffer callback
+			// create the converter element
+			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
+			if self.osdconv == null or not self.add(self.osdconv)
+				error(@"$(self.name) failed to create or add nvvideoconvert element")
+
+			// create the osd element
 			self.osd = Gst.ElementFactory.make("nvdsosd", "osd")
 			if self.osd == null or not self.add(self.osd)
 				error(@"$(self.name) failed to create or add nvdsosd element")
+
+			// link all elements
+			if not self.pie.link_many(self.osdconv, self.osd)
+				error(@"$(self.name) faild to link nvinfer ! nvvideoconvert ! nvdsosd")
+
+			// connect the buffer callback to the sink pad
 			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
 			if osd_sink_pad == null
 				error(@"$(self.name) failed to get osd sink pad")
 			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_redact)
-
-			// link the elements
-			if not self.pie.link(self.osd)
-				error(@"$(self.name) could not link $(self.pie.name) to $(self.osd.name)")
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one bin to
