@@ -212,6 +212,7 @@ namespace NValhalla
 				self._sources_linked_mutex.unlock()
 #if DEBUG
 				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
+#endif
 				warning(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
 				warning(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
 				error(@"pad link failed between $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name) because $(ret.to_string())")
