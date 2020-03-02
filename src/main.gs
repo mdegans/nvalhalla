@@ -45,7 +45,8 @@ def static ensure_config_dir(): string?
 init
 	config_dir:string? = ensure_config_dir()
 	if config_dir != null
-		GLib.Environ.set_variable(null, "GST_DEBUG_DUMP_DOT_DIR", config_dir, false)
+		GLib.Environment.set_variable(
+			"GST_DEBUG_DUMP_DOT_DIR", config_dir, false);
 
 	// create the app instance and run it
 	var app = new NValhalla.App(args, null)
