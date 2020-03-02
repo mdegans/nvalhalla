@@ -46,17 +46,29 @@ namespace NValhalla
 			return Source.REMOVE
 
 	class App: Object
+		// TODO(mdegans): move all this outside the App so args are parsed outside
 
 		// app stuff
 		_loop:GLib.MainLoop
 		_handler:SignalHandler
 		[CCode (array_length = false, array_null_terminated = true)]
+		_uris:static array of string
 		_sink_type:static string?  // ? means nullable in Genie/Vala
 		const _options: array of OptionEntry = {
 			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref _uris, "URI for uridecodebin", "URIS..."},
 			{"sink", 0, 0, OptionArg.STRING, ref _sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
 			{null}
 		}
+
+		def static validate_sink_type(val:string)
+			if val != "screen" and val != "rtsp"
+				error(@"'$val' is not a valid --sink: must be 'screen' or 'rtsp'")
+
+		def static validate_uri(val:string)
+			// i am guessing uridecodebin does this, but can't hurt
+			// TODO: read uridecodebin source and check
+			if GLib.Uri.parse_scheme(val) == null
+				error(@"$val is not a valid uri")
 
 		// pipeline and elements:
 		_pipeline:Gst.Pipeline
@@ -72,13 +84,21 @@ namespace NValhalla
 
 		construct(args:array of string, loop:GLib.MainLoop?)
 			try
-				var opt_context = new OptionContext ("- NValhalla stream player")
+				var opt_context = new OptionContext ("- NValhalla stream redactor")
 				opt_context.set_help_enabled (true)
 				opt_context.add_main_entries (_options, null)
 				opt_context.add_group(Gst.init_get_option_group())
 				opt_context.parse (ref args)
 			except e:OptionError
 				error("%s\n", e.message)
+			// todo: implement proper GLib way to do this
+			// having trouble figuring out OptionArg.CALLBACK
+			// proper way is to throw an error whiw is caught and repored above
+			// https://valadoc.org/glib-2.0/GLib.Error.html
+			if _sink_type != null
+				validate_sink_type(_sink_type)
+			for uri in _uris
+				validate_uri(uri)
 
 			// assign or create a GLib Main Loop
 			if loop != null
@@ -162,7 +182,7 @@ namespace NValhalla
 			// add the sink
 			if _sink_type == null or _sink_type == "screen" 
 				debug(@"creating nvoverlay sink")
-			self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
+				self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
 			else if _sink_type == "rtsp"
 				debug(@"creating a rtsp sink bin for")
 				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
