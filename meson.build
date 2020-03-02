@@ -2,8 +2,14 @@ project('nvalhalla', ['c', 'vala'],        version: '0.1.0',
   meson_version: '>= 0.40.0',
 )
 
-# comment this out to disable debug code (relatively pointless):
-add_project_arguments('--define=DEBUG', language: 'vala')
+# todo: figure out how to autodetect tegra
+add_project_arguments(
+  [
+    '--define=DEBUG',
+    '--define=TEGRA',
+  ],
+  language: 'vala'
+)
 
 subdir('src')
 

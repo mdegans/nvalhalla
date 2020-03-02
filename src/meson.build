@@ -16,6 +16,7 @@ nvalhalla_deps = [
   dependency('glib-2.0', version: '>=2.50'),
   dependency('gobject-2.0', version: '>=2.0'),
   dependency('gstreamer-1.0', version: '>=1.0'),
+  dependency('gstreamer-rtsp-server-1.0', version: '>=1.0'),
   dependency('gee-0.8'),
   # this is needed for the SignalHandler:
   meson.get_compiler('vala').find_library('posix'),

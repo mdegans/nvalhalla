@@ -51,9 +51,10 @@ namespace NValhalla
 		_loop:GLib.MainLoop
 		_handler:SignalHandler
 		[CCode (array_length = false, array_null_terminated = true)]
-		_uris: static array of string
+		_sink_type:static string?  // ? means nullable in Genie/Vala
 		const _options: array of OptionEntry = {
-			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref _uris, "URI", "URIS..."},
+			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref _uris, "URI for uridecodebin", "URIS..."},
+			{"sink", 0, 0, OptionArg.STRING, ref _sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
 			{null}
 		}
 
@@ -108,6 +109,7 @@ namespace NValhalla
 			self._muxer.set_property("batch-size", 1)
 			self._muxer.set_property("live-source", true)
 			self._muxer.set_property("width", 1920)
+			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
 			self._muxer.set_property("height", 1080)
 
 			// if no uris given try to make a camera source
@@ -157,10 +159,17 @@ namespace NValhalla
 			self._tiler.set_property("width", 1920)
 			self._tiler.set_property("height", 1080)
 
-			// add the sink (overlaysink, because it always works)
+			// add the sink
+			if _sink_type == null or _sink_type == "screen" 
+				debug(@"creating nvoverlay sink")
 			self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
+			else if _sink_type == "rtsp"
+				debug(@"creating a rtsp sink bin for")
+				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
+			else
+				warning(@"--sink validator is broken. please report.")
 			if self._sink == null or not self._pipeline.add(self._sink)
-				error("could not creat or add nvoverlaysink")
+				error("could not create or add sink")
 
 			// link everything: (sources are linked to callback by muxer)
 			if not self._muxer.link(self._redact)
