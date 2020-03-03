@@ -59,16 +59,28 @@ namespace NValhalla.Bins
 
 		// TODO(mdegans) make this more flexible so alternative install prefixes work:
 		const DEFAULT_PIE_CONFIG:string = "/usr/local/share/nvalhalla/nvinfer_configs/redaction.txt"
-		const ENGINE_FILENAME:string = "redaction.engine"
 
 		// Redaction elements:
-		pie:Gst.Element
+		pie:dynamic Gst.Element  
+		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
+		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
+		// i don't even remember and can't find it again on a Google....
+		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
 		osdconv:Gst.Element
 		//  osdcaps:Gst.Element
 		osd:Gst.Element
 
 		// this is like a read only @property in python. a _probe_id is declared automatically
 		prop readonly probe_id:ulong
+		// these are getters and setters:
+		prop num_sources:int
+			get
+				return self.pie.batch_size
+			set
+				config_dir:string = ensure_config_dir()
+				basename:string = @"redaction_b$(value)_fp32.engine"
+				self.pie.model_engine_file = GLib.Path.build_filename(config_dir, basename)
+				self.pie.batch_size = value
 
 		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
 		// __init__ in Python (that's "construct")
@@ -100,7 +112,7 @@ namespace NValhalla.Bins
 		//  	src_template.static_caps.string = "video/x-raw(memory:NVMM)"
 		//  	add_static_pad_template(src_template)
 
-		construct(name:string?, pie_config:string?)
+		construct(name:string?, pie_config:string?, num_sources:int?)
 			if name != null
 				self.name = name
 
@@ -108,10 +120,8 @@ namespace NValhalla.Bins
 			self.pie = Gst.ElementFactory.make("nvinfer", "pie")
 			if self.pie == null or not self.add(self.pie)
 				error(@"$(self.name) failed to create or add nvinfer element")
-			self.pie.set_property("config-file-path", pie_config != null ? pie_config : DEFAULT_PIE_CONFIG)
-			config_dir:string = ensure_config_dir()
-			model_engine_file:string = GLib.Path.build_filename(config_dir, ENGINE_FILENAME)
-			self.pie.set_property("model-engine-file", model_engine_file)
+			self.num_sources = num_sources != null ? num_sources : 1
+			self.pie.config_file_path = pie_config != null ? pie_config : DEFAULT_PIE_CONFIG
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
@@ -156,6 +166,7 @@ namespace NValhalla.Bins
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
+
 
 	class RtspServerSink: Gst.Bin
 		// this Bin is mostly ported from deepstream-test1.py by Nvidia, so...

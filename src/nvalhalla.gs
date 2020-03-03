@@ -164,7 +164,7 @@ namespace NValhalla
 				error("no sources could be created")
 
 			// create a new redaction bin and set the batch size for the nvinfer element
-			self._redact = new NValhalla.Bins.Redaction("redact", null)
+			self._redact = new NValhalla.Bins.Redaction("redact", null, self._sources.size)
 			if self._redact == null or not self._pipeline.add(self._redact)
 				error("failed to create or add redaction bin")
 
@@ -233,7 +233,7 @@ namespace NValhalla
 			if ret == Gst.PadLinkReturn.OK
 				self._sources_linked++
 				self._muxer.set_property("batch-size", self._sources_linked)
-				self._redact.pie.set_property("batch-size", self._sources_linked)
+				self._redact.num_sources = self._sources_linked
 				// todo, update tiler, add live add support
 				self._sources_linked_mutex.unlock()
 				return
