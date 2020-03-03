@@ -7,7 +7,7 @@ Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4
 ## Requirements
 
 - hardware: A Tegra device (tested on Jetson Nano and Jetson Xavier). X86/NVIDIA with DeepStream installed *may* work, however this configuration has not been tested.
-- software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev deepstream-4.0 valac meson`
+- software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-4.0 valac meson`
 
 ## Installation
 
