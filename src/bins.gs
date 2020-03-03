@@ -59,6 +59,7 @@ namespace NValhalla.Bins
 
 		// TODO(mdegans) make this more flexible so alternative install prefixes work:
 		const DEFAULT_PIE_CONFIG:string = "/usr/local/share/nvalhalla/nvinfer_configs/redaction.txt"
+		const ENGINE_FILENAME:string = "redaction.engine"
 
 		// Redaction elements:
 		pie:Gst.Element
@@ -108,6 +109,9 @@ namespace NValhalla.Bins
 			if self.pie == null or not self.add(self.pie)
 				error(@"$(self.name) failed to create or add nvinfer element")
 			self.pie.set_property("config-file-path", pie_config != null ? pie_config : DEFAULT_PIE_CONFIG)
+			config_dir:string = ensure_config_dir()
+			model_engine_file:string = GLib.Path.build_filename(config_dir, ENGINE_FILENAME)
+			self.pie.set_property("model-engine-file", model_engine_file)
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
