@@ -223,10 +223,13 @@ namespace NValhalla
 			if not src_pad_type.has_prefix("video/x-raw")
 				debug(@"$(src_pad.name) is not a video pad. skipping.")
 				return
+
+			// without this lock it's possible to request multiple identical pads like:
+			// Padname sink_0 is not unique in element muxer, not adding
 			debug(@"getting muxer lock for $(src.name)")
 			self._muxer_link_lock.lock()
 			debug(@"got muxer lock for $(src.name)")
-			// get a sink pad from the multiqueue
+
 			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
 			if sink_pad == null
 				error("could not request sink pad from multiqueue")
@@ -235,6 +238,7 @@ namespace NValhalla
 
 			// this needs to be updated on pad added or flickering occurs with the osd
 			self._muxer.set_property("batch-size", self._muxer.numsinkpads)
+
 			debug(@"releasing muxer lock for $(src.name)")
 			self._muxer_link_lock.unlock()
 			debug(@"released muxer lock for $(src.name)")
@@ -243,20 +247,34 @@ namespace NValhalla
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
 			// note: in Genie there is no fallthrough in a case block, so no need to break;
 			case message.type
+				when Gst.MessageType.QOS
+				when Gst.MessageType.BUFFERING
+					break
+				when Gst.MessageType.TAG
+					if message.src.name == "sink"
+						break
 				when Gst.MessageType.EOS
 					GLib.message("Got EOS")
 					self.quit()
+				when Gst.MessageType.STATE_CHANGED
+					old_state:Gst.State
+					new_state:Gst.State
+					message.parse_state_changed(out old_state, out new_state, null)
+					debug(@"STATE_CHANGED:$(message.src.name):$(old_state.to_string())->$(new_state.to_string())")
 				when Gst.MessageType.ERROR
 					err:GLib.Error
 					debug:string
 					message.parse_error(out err, out debug)
-					if err.code != 3  // window closed
-						error(@"$(err.code):$(err.message):$(debug)")
-					self.quit()
+					if err.code == 3  // window closed
+						self.quit()
+					error(@"$(err.code):$(err.message):$(debug)")
 				when Gst.MessageType.WARNING
 					err:GLib.Error
 					debug:string
 					message.parse_warning(out err, out debug)
+					if err.code == 13
+						// buffers being dropped spam
+						break
 					warning(@"$(err.code):$(err.message):$(debug)")
 				default
 					debug(@"BUS_MSG:$(message.src.name):$(message.type.get_name())")
