@@ -182,6 +182,7 @@ namespace NValhalla
 			if _sink_type == null or _sink_type == "screen" 
 				debug(@"creating nvoverlay sink")
 				self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
+				self._sink.set_property("qos", false)
 			else if _sink_type == "rtsp"
 				debug(@"creating a rtsp sink bin for")
 				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
