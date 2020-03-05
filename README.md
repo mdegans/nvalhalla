@@ -31,7 +31,7 @@ You can redact **multiple youtube streams** like this, provided you have youtube
 ```
 nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
-![four youtube streams at once](https://i.imgur.com/23EQWQO.jpg)
+![four youtube streams at once](https://i.imgur.com/7eo0NR5.jpg)
 
 **Local video streams** can also be used like this:
 ```
