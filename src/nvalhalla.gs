@@ -72,12 +72,13 @@ namespace NValhalla
 
 		// pipeline and elements:
 		_pipeline:Gst.Pipeline
+		// a list of elements to iterate through, but perhaps some builtin of pipeline can be used instead:
 		_sources:list of Gst.Element
-		// sources_linked needs to be locked during use
-		// (or it's possible to request identical pads)
-		_sources_linked:int
-		_sources_linked_mutex:GLib.Mutex
+		// plain old elements
+		_multiqueue:Gst.Element
+		_multiqueue_link_lock:GLib.Mutex
 		_muxer:Gst.Element
+		_muxer_link_lock:GLib.Mutex
 		_redact:NValhalla.Bins.Redaction
 		_tiler:Gst.Element
 		_sink:Gst.Element
@@ -119,8 +120,13 @@ namespace NValhalla
 
 			// make a new list of sources (Gee.ArrayList)
 			self._sources = new list of Gst.Element
-			self._sources_linked = 0
-			self._sources_linked_mutex = GLib.Mutex()
+
+			// make a multiqueue to (hopefully) help with input I/O and sync issues
+			self._multiqueue = Gst.ElementFactory.make("multiqueue", "multiqueue")
+			if self._multiqueue == null or not self._pipeline.add(self._multiqueue)
+				error("failed to create or add multiqueue")
+			self._multiqueue.pad_added.connect(self._on_multiqueue_pad_added)
+			self._multiqueue_link_lock = GLib.Mutex()
 
 			// setup the stream muxer to link sources to
 			self._muxer = Gst.ElementFactory.make("nvstreammux", "muxer")
@@ -128,9 +134,10 @@ namespace NValhalla
 				error("failed to create or add stream muxer")
 			self._muxer.set_property("batch-size", 1)
 			self._muxer.set_property("live-source", true)
-			self._muxer.set_property("width", 1920)
+			self._muxer.set_property("width", 960)
 			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
-			self._muxer.set_property("height", 1080)
+			self._muxer.set_property("height", 540)
+			self._muxer_link_lock = GLib.Mutex()
 
 			// if no uris given try to make a camera source
 			if _uris.length == 0
@@ -168,6 +175,9 @@ namespace NValhalla
 			if self._redact == null or not self._pipeline.add(self._redact)
 				error("failed to create or add redaction bin")
 
+			// the .num_sources setter updates the batch-size and expected engine filename
+			self._redact.num_sources = self._sources.size
+
 			// set up the multi-stream tiler
 			self._tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self._tiler == null or not self._pipeline.add(self._tiler)
@@ -204,6 +214,18 @@ namespace NValhalla
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
 #endif
 
+		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
+			// try to link the pads, check return, and warn if not OK and dump dot
+			ret:Gst.PadLinkReturn = src_pad.link(sink_pad)
+			if ret == Gst.PadLinkReturn.OK
+				return
+			else
+				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
+				warning(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
+				warning(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
+				error(@"pad link failed between $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name) because $(ret.to_string())")
+
+
 		def _on_src_pad_added(src:Gst.Element, src_pad:Gst.Pad)
 #if DEBUG
 			debug(@"got new pad $(src_pad.name) from $(src.name)")
@@ -219,32 +241,37 @@ namespace NValhalla
 #endif
 				return
 
-			self._sources_linked_mutex.lock()
-			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._sources_linked)")
+			self._multiqueue_link_lock.lock()
+			// get a sink pad from the multiqueue
+			sink_pad:Gst.Pad = self._multiqueue.get_request_pad(@"sink_$(self._multiqueue.numsinkpads)")
 			if sink_pad == null
-				error("could not request sink pad from stream muxer")
-			if sink_pad.is_linked()
-				warning(@"attempt to link $(src_pad.name) to already linked pad
-	$(sink_pad.name). sources_linked counter is off. incrementing.")
-				self._sources_linked++
-				self._sources_linked_mutex.unlock()
-				return
-			ret:Gst.PadLinkReturn = src_pad.link(sink_pad)
-			if ret == Gst.PadLinkReturn.OK
-				self._sources_linked++
-				self._muxer.set_property("batch-size", self._sources_linked)
-				self._redact.num_sources = self._sources_linked
-				// todo, update tiler, add live add support
-				self._sources_linked_mutex.unlock()
-				return
-			else
-				self._sources_linked_mutex.unlock()
+				error("could not request sink pad from multiqueue")
+
+			self._try_linking(src_pad, sink_pad)
+			self._multiqueue_link_lock.unlock()
+
+
+		def _on_multiqueue_pad_added(src:Gst.Element, src_pad:Gst.Pad)
 #if DEBUG
-				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
+			debug(@"got new pad $(src_pad.name) from $(src.name)")
 #endif
-				warning(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
-				warning(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
-				error(@"pad link failed between $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name) because $(ret.to_string())")
+			// if the src_pad is a sink pad, ignore it, otherwise GST_PAD_LINK_WRONG_DIRECTION
+			if src_pad.direction == Gst.PadDirection.SINK
+				return
+
+			self._muxer_link_lock.lock()
+			// get a sink pad from the stream muxer. the muxer doesn't seem to accept a
+			// template when requesting a pad so we must keep count manually
+			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
+			if sink_pad == null
+				error("could not get sink pad from stream muxer")
+			
+			self._try_linking(src_pad, sink_pad)
+
+			// this needs to be updated on pad added or flickering occurs with the osd
+			self._muxer.set_property("batch-size", self._muxer.numsinkpads)
+
+			self._muxer_link_lock.unlock()
 
 
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
@@ -279,4 +306,5 @@ namespace NValhalla
 
 		def quit()
 			self._loop.quit()
+			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).quit")
 			self._pipeline.set_state(Gst.State.NULL)
