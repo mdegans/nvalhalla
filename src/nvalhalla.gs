@@ -75,8 +75,6 @@ namespace NValhalla
 		// a list of elements to iterate through, but perhaps some builtin of pipeline can be used instead:
 		_sources:list of Gst.Element
 		// plain old elements
-		_multiqueue:Gst.Element
-		_multiqueue_link_lock:GLib.Mutex
 		_muxer:Gst.Element
 		_muxer_link_lock:GLib.Mutex
 		_redact:NValhalla.Bins.Redaction
@@ -120,13 +118,6 @@ namespace NValhalla
 
 			// make a new list of sources (Gee.ArrayList)
 			self._sources = new list of Gst.Element
-
-			// make a multiqueue to (hopefully) help with input I/O and sync issues
-			self._multiqueue = Gst.ElementFactory.make("multiqueue", "multiqueue")
-			if self._multiqueue == null or not self._pipeline.add(self._multiqueue)
-				error("failed to create or add multiqueue")
-			self._multiqueue.pad_added.connect(self._on_multiqueue_pad_added)
-			self._multiqueue_link_lock = GLib.Mutex()
 
 			// setup the stream muxer to link sources to
 			self._muxer = Gst.ElementFactory.make("nvstreammux", "muxer")
@@ -241,31 +232,12 @@ namespace NValhalla
 #endif
 				return
 
-			self._multiqueue_link_lock.lock()
+			self._muxer_link_lock.lock()
 			// get a sink pad from the multiqueue
-			sink_pad:Gst.Pad = self._multiqueue.get_request_pad(@"sink_$(self._multiqueue.numsinkpads)")
+			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
 			if sink_pad == null
 				error("could not request sink pad from multiqueue")
 
-			self._try_linking(src_pad, sink_pad)
-			self._multiqueue_link_lock.unlock()
-
-
-		def _on_multiqueue_pad_added(src:Gst.Element, src_pad:Gst.Pad)
-#if DEBUG
-			debug(@"got new pad $(src_pad.name) from $(src.name)")
-#endif
-			// if the src_pad is a sink pad, ignore it, otherwise GST_PAD_LINK_WRONG_DIRECTION
-			if src_pad.direction == Gst.PadDirection.SINK
-				return
-
-			self._muxer_link_lock.lock()
-			// get a sink pad from the stream muxer. the muxer doesn't seem to accept a
-			// template when requesting a pad so we must keep count manually
-			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
-			if sink_pad == null
-				error("could not get sink pad from stream muxer")
-			
 			self._try_linking(src_pad, sink_pad)
 
 			// this needs to be updated on pad added or flickering occurs with the osd
