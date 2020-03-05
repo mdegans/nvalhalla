@@ -5,7 +5,6 @@ project('nvalhalla', ['c', 'vala'],        version: '0.1.0',
 # todo: figure out how to autodetect tegra
 add_project_arguments(
   [
-    '--define=DEBUG',
     '--define=TEGRA',
   ],
   language: 'vala'

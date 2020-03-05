@@ -143,9 +143,7 @@ namespace NValhalla
 			else
 				i:int = 0
 				for uri in _uris
-#if DEBUG
 					debug(@"adding: $uri")
-#endif
 					// TODO(mdegans): figure out how to get uridecodebin to skip audio streams
 					// necessarily there is a way from browsing uridecodebin docs. needs experimenting
 					src:Gst.Element = Gst.ElementFactory.make("uridecodebin", @"source_$i")
@@ -201,9 +199,7 @@ namespace NValhalla
 			//  self._muxer.link(self._tiler)
 			if not self._tiler.link(self._sink)
 				error("could not link stream tiler to sink")
-#if DEBUG
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
-#endif
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
 			// try to link the pads, check return, and warn if not OK and dump dot
@@ -211,28 +207,25 @@ namespace NValhalla
 			if ret == Gst.PadLinkReturn.OK
 				return
 			else
-				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
 				warning(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
 				warning(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
+				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
 				error(@"pad link failed between $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name) because $(ret.to_string())")
 
 
 		def _on_src_pad_added(src:Gst.Element, src_pad:Gst.Pad)
-#if DEBUG
 			debug(@"got new pad $(src_pad.name) from $(src.name)")
-#endif
 			// if not a video/NVMM pad, reject it
 			// https://valadoc.org/gstreamer-1.0/Gst.Pad.query_caps.html
 			src_caps:Gst.Caps = src_pad.query_caps(null)
 			src_pad_struct:weak Gst.Structure = src_caps.get_structure(0)
 			src_pad_type:string = src_pad_struct.get_name()
 			if not src_pad_type.has_prefix("video/x-raw")
-#if DEBUG
 				debug(@"$(src_pad.name) is not a video pad. skipping.")
-#endif
 				return
-
+			debug(@"getting muxer lock for $(src.name)")
 			self._muxer_link_lock.lock()
+			debug(@"got muxer lock for $(src.name)")
 			// get a sink pad from the multiqueue
 			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
 			if sink_pad == null
@@ -242,8 +235,9 @@ namespace NValhalla
 
 			// this needs to be updated on pad added or flickering occurs with the osd
 			self._muxer.set_property("batch-size", self._muxer.numsinkpads)
-
+			debug(@"releasing muxer lock for $(src.name)")
 			self._muxer_link_lock.unlock()
+			debug(@"released muxer lock for $(src.name)")
 
 
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
@@ -264,10 +258,8 @@ namespace NValhalla
 					debug:string
 					message.parse_warning(out err, out debug)
 					warning(@"$(err.code):$(err.message):$(debug)")
-#if DEBUG
 				default
 					debug(@"BUS_MSG:$(message.src.name):$(message.type.get_name())")
-#endif
 			return true
 
 
