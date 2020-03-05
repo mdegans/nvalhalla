@@ -204,12 +204,13 @@ namespace NValhalla
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
 			// try to link the pads, check return, and warn if not OK and dump dot
+			debug(@"trying to link $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name)")
+			debug(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
+			debug(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
 			ret:Gst.PadLinkReturn = src_pad.link(sink_pad)
 			if ret == Gst.PadLinkReturn.OK
 				return
 			else
-				warning(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
-				warning(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
 				Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).link_failure")
 				error(@"pad link failed between $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name) because $(ret.to_string())")
 
@@ -231,14 +232,17 @@ namespace NValhalla
 			self._muxer_link_lock.lock()
 			debug(@"got muxer lock for $(src.name)")
 
-			sink_pad:Gst.Pad = self._muxer.get_request_pad(@"sink_$(self._muxer.numsinkpads)")
+			// this needs to be updated on pad added or flickering occurs with the osd
+			debug(@"setting muxer batch-size to $(self._muxer.numsinkpads + 1)")
+			self._muxer.set_property("batch-size", self._muxer.numsinkpads + 1)
+
+			sink_pad_name:string = @"sink_$(self._muxer.numsinkpads)"
+			debug(@"requesting pad $sink_pad_name")
+			sink_pad:Gst.Pad = self._muxer.get_request_pad(sink_pad_name)
 			if sink_pad == null
 				error("could not request sink pad from multiqueue")
 
 			self._try_linking(src_pad, sink_pad)
-
-			// this needs to be updated on pad added or flickering occurs with the osd
-			self._muxer.set_property("batch-size", self._muxer.numsinkpads)
 
 			debug(@"releasing muxer lock for $(src.name)")
 			self._muxer_link_lock.unlock()
