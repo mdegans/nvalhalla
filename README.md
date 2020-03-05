@@ -50,3 +50,11 @@ Basically, and uri supported by [uridecodebin](https://gstreamer.freedesktop.org
 - **Why the Satan & Winnie the Pooh stuff in the license**? I don't actually believe in Satan or have anything against Dear Leader, Xi Dada, however it's my desire that portions of this sofware not be used to make the next iteration of a [Uighur detector](https://www.nytimes.com/2019/05/22/world/asia/china-surveillance-xinjiang.html). If anybody is offended and has a legitimate reason for wanting it removed, please [file an issue](https://github.com/mdegans/nvalhalla/issues) and plead your case publicly. I may consider a relicense *to an individual party* for a good reason. Emails on this topic will be ignored.
 
 - **Why NValhalla**? It's partially a joke on how Nvidia likes to prefix everything and anything with NV, and it was the first word that came to my mind containing "Vala". Also it's certainly heaven writing Vala/Genie Gstreamer (compared to C, or even Python), so the whole thing fits.
+
+- **how i view app debug messages**? start the app with G_MESSAGES_DEBUG=all set.
+
+- **how do i view gstreamer debug messages**? use the --gst-debug-level option (useful range 0-5)
+
+## TODO
+
+- int 8 calibration of the model to make platforms that support it even faster.
