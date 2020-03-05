@@ -251,7 +251,7 @@ namespace NValhalla
 				when Gst.MessageType.QOS
 				when Gst.MessageType.BUFFERING
 				when Gst.MessageType.TAG
-						break
+					break
 				when Gst.MessageType.EOS
 					GLib.message("Got EOS")
 					self.quit()
