@@ -249,9 +249,7 @@ namespace NValhalla
 			case message.type
 				when Gst.MessageType.QOS
 				when Gst.MessageType.BUFFERING
-					break
 				when Gst.MessageType.TAG
-					if message.src.name == "sink"
 						break
 				when Gst.MessageType.EOS
 					GLib.message("Got EOS")
