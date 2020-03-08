@@ -151,6 +151,7 @@ namespace NValhalla
 						warning(@"failed to create source for $uri")
 						continue
 					src.set_property("uri", uri)
+					src.set_property("async-handling", true)
 					src.pad_added.connect(self._on_src_pad_added)
 					self._sources.add(src)
 					i++
