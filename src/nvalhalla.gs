@@ -46,6 +46,10 @@ namespace NValhalla
 			return Source.REMOVE
 
 	class App: Object
+		// TODO(mdegans): make this configurable
+		const WIDTH:int = 1920
+		const HEIGHT:int = 1080
+
 		// TODO(mdegans): move all this outside the App so args are parsed outside
 
 		// app stuff
@@ -123,11 +127,6 @@ namespace NValhalla
 			self._muxer = Gst.ElementFactory.make("nvstreammux", "muxer")
 			if self._muxer == null or not self._pipeline.add(self._muxer)
 				error("failed to create or add stream muxer")
-			self._muxer.set_property("batch-size", 1)
-			self._muxer.set_property("live-source", true)
-			self._muxer.set_property("width", 960)
-			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
-			self._muxer.set_property("height", 540)
 			self._muxer_link_lock = GLib.Mutex()
 
 			// if no uris given try to make a camera source
@@ -181,12 +180,22 @@ namespace NValhalla
 			self._tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self._tiler == null or not self._pipeline.add(self._tiler)
 				error("could not create or add stream tiler")
+
 			// calculate the number of columns and rows required:
 			rows_and_columns:int = (int) Math.ceilf(Math.sqrtf((float) self._sources.size))
+
 			self._tiler.set_property("rows", rows_and_columns)
 			self._tiler.set_property("columns", rows_and_columns)
-			self._tiler.set_property("width", 1920)
-			self._tiler.set_property("height", 1080)
+			self._tiler.set_property("width", WIDTH)
+			self._tiler.set_property("height", HEIGHT)
+
+			self._muxer.set_property("batch-size", 1)
+			self._muxer.set_property("live-source", true)
+			// TODO(mdegans): see if the scaling prior to inference helps or
+			// hurts performance.
+			self._muxer.set_property("width", WIDTH / rows_and_columns)
+			self._muxer.set_property("height", HEIGHT / rows_and_columns)
+			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
 
 			// add the sink
 			if _sink_type == null or _sink_type == "screen" 
