@@ -264,6 +264,8 @@ namespace NValhalla
 			case message.type
 				when Gst.MessageType.QOS
 				when Gst.MessageType.BUFFERING
+				when Gst.MessageType.LATENCY
+				when Gst.MessageType.ASYNC_DONE
 				when Gst.MessageType.TAG
 					break
 				when Gst.MessageType.EOS
