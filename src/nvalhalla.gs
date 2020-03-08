@@ -150,9 +150,18 @@ namespace NValhalla
 					if src == null or not self._pipeline.add(src)
 						warning(@"failed to create source for $uri")
 						continue
+
+					// set source properties
 					src.set_property("uri", uri)
+					src.set_property("caps", Gst.Caps.from_string("video/x-raw(ANY)"))
+					src.set_property("expose-all-streams", false)
 					src.set_property("async-handling", true)
+
+					// connect the pad-added callback
 					src.pad_added.connect(self._on_src_pad_added)
+
+					// add the source to the _sources list
+					// (this may be pointless since finding the children propery)
 					self._sources.add(src)
 					i++
 
