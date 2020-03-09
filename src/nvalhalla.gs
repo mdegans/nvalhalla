@@ -173,9 +173,6 @@ namespace NValhalla
 			if self._redact == null or not self._pipeline.add(self._redact)
 				error("failed to create or add redaction bin")
 
-			// the .num_sources setter updates the batch-size and expected engine filename
-			self._redact.num_sources = self._sources.size
-
 			// set up the multi-stream tiler
 			self._tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self._tiler == null or not self._pipeline.add(self._tiler)
