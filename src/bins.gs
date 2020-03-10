@@ -32,7 +32,7 @@
 [indent = 0]
 
 //  def static plugin_init(plugin:Gst.Plugin): bool
-//  	Gst.Element.register(plugin, "nvredact", Gst.Rank.NONE, typeof(NValhalla.Bins.Redaction))
+//  	Gst.Element.register(plugin, "nvredact", Gst.Rank.NONE, typeof(NValhalla.Bins.Redactor))
 //  	return true
 
 // TODO: mdegans: figure out hwo to fix error: Value must be constant
@@ -55,64 +55,21 @@ def extern on_buffer_osd_redact(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProb
 
 namespace NValhalla.Bins
 
-	class Redaction: Gst.Bin
+	class Redactor:Gst.Bin
 
-		// TODO(mdegans) make this more flexible so alternative install prefixes work:
-		const DEFAULT_PIE_CONFIG:string = "/usr/local/share/nvalhalla/nvinfer_configs/redaction.txt"
+		// constants needed by the redactor
+		const CONFIG_BASENAME:string = "redactor.ini"
+		const MODEL_BASENAME:string = "redactor.caffemodel"
+		const PROTO_BASENAME:string = "redactor.prototxt"
+		const LABEL_BASENAME:string = "redactor_labels.txt"
 
-		// Redaction elements:
-		pie:dynamic Gst.Element  
-		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
-		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
-		// i don't even remember and can't find it again on a Google....
-		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
-		osdconv:Gst.Element
-		//  osdcaps:Gst.Element
-		osd:Gst.Element
+		prop readonly config:dict of string,string
 
-		// this is like a read only @property in python. a _probe_id is declared automatically
-		prop readonly probe_id:ulong
-		// these are getters and setters:
-		prop num_sources:int
-			get
-				return self.pie.batch_size
-			set
-				config_dir:string = ensure_config_dir()
-				basename:string = @"redaction_b$(value)_fp32.engine"
-				self.pie.model_engine_file = GLib.Path.build_filename(config_dir, basename)
-				self.pie.batch_size = value
-
-		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
-		// __init__ in Python (that's "construct")
-		// https://stackoverflow.com/questions/34706079/class-construct-for-genie
-		// https://gstreamer.freedesktop.org/documentation/plugin-development/basics/boiler.html#element-metadata
-		//  init
-		//  	// so by trial and error, i figured out how to wrap lines. the ; must absolutely be at the end 
-		//  	// or else "syntax error, expected identifier"
-		//  	set_static_metadata(
-		//  		"nvredact",
-		//  		"Filter",
-		//  		"Redacts faces and license plates using nvinfer",
-		//  		"Michael de Gans <michael.john.degans@gmail.com>"
-		//  	);
-		//  	sink_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
-		//  	sink_template.direction = Gst.PadDirection.SINK
-		//  	sink_template.name_template = "sink"
-		//  	sink_template.presence = Gst.PadPresence.ALWAYS
-		//  	sink_template.static_caps = Gst.StaticCaps()
-		//  	sink_template.static_caps.string = "video/x-raw(memory:NVMM)"
-		//  	//  sink_template.static_caps.caps = ???
-		//  	// todo: figure out how to get the actual Gst.Caps
-		//  	add_static_pad_template(sink_template)
-		//  	src_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
-		//  	src_template.direction = Gst.PadDirection.SRC
-		//  	src_template.name_template = "src"
-		//  	src_template.presence = Gst.PadPresence.ALWAYS
-		//  	src_template.static_caps = Gst.StaticCaps()
-		//  	src_template.static_caps.string = "video/x-raw(memory:NVMM)"
-		//  	add_static_pad_template(src_template)
-
-		construct(name:string?, pie_config:string?, num_sources:int?)
+		construct(name:string?)
+			try
+				_config = setup()
+			except err:NValhalla.SetupError
+				error("Redactor setup failed because: %s\n", err.message)
 			if name != null
 				self.name = name
 
@@ -120,8 +77,8 @@ namespace NValhalla.Bins
 			self.pie = Gst.ElementFactory.make("nvinfer", "pie")
 			if self.pie == null or not self.add(self.pie)
 				error(@"$(self.name) failed to create or add nvinfer element")
-			self.num_sources = num_sources != null ? num_sources : 1
-			self.pie.config_file_path = pie_config != null ? pie_config : DEFAULT_PIE_CONFIG
+			for var entry in _config.entries
+				self.pie.set_property(entry.key, entry.value)
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
@@ -166,6 +123,116 @@ namespace NValhalla.Bins
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
+
+		/**
+		 * Symlink reqiured models into user model path
+		 *
+		 * @return a dict (libgee's HashMap) of string,string with the model-file, proto-file, and label-file
+		 */
+		def static ensure_models():dict of string,string raises NValhalla.SetupError
+			dest_dir:string = NValhalla.ensure_model_dir()
+			// set up source paths
+			var sources = new dict of string,string
+			sources["model-file"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, MODEL_BASENAME)
+			sources["proto-file"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, PROTO_BASENAME)
+			sources["labelfile-path"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, LABEL_BASENAME)
+			// set up dest paths
+			var dests = new dict of string,string
+			dests["model-file"] = GLib.Path.build_filename(dest_dir, MODEL_BASENAME)
+			dests["proto-file"] = GLib.Path.build_filename(dest_dir, PROTO_BASENAME)
+			dests["labelfile-path"] = GLib.Path.build_filename(dest_dir, LABEL_BASENAME)
+			// symlink all sources to destination
+			for var key in sources.keys
+				if GLib.FileUtils.test(dests[key], GLib.FileTest.EXISTS)
+					continue
+				try
+					NValhalla.sync_copy_file(sources[key], dests[key], null)
+				except err:Error
+					raise new NValhalla.SetupError.COPY( \
+						@"could not copy $(sources[key]) to $(dests[key]) because: $(err.message))")
+			return dests
+
+		/**
+		 * Setup environment and paths
+		 *
+		 * run ensure_config, run ensure_model_dir, and run ensure_models
+		 *
+		 * @return a dict (libgee's HashMap) of string,string containing parameters for the primary inference engine
+		 */
+		def static setup():dict of string,string raises NValhalla.SetupError
+			ensure_models()
+			config_source:string = GLib.Path.build_filename(NValhalla.NVINFER_CONFIG_DIR, CONFIG_BASENAME)
+			config_dest:string = GLib.Path.build_filename(NValhalla.ensure_config_dir(), CONFIG_BASENAME)
+			// load the config source
+			if not GLib.FileUtils.test(config_dest, GLib.FileTest.EXISTS)
+				try
+					NValhalla.sync_copy_file(config_source, config_dest, null)
+				except err:Error
+					raise new NValhalla.SetupError.COPY( \
+						@"could not copy $config_source to $config_dest becuase: $(err.message)")
+			var conf = new dict of string,string
+			// this may make more sense when "labelfile-path, model-file, and proto-file"
+			conf["config-file-path"] = config_dest
+			return conf
+
+		// Redactor elements:
+		pie:dynamic Gst.Element  
+		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
+		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
+		// i don't even remember and can't find it again on a Google....
+		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
+		osdconv:Gst.Element
+		//  osdcaps:Gst.Element
+		osd:Gst.Element
+
+		// this is like a read only @property in python. a _probe_id is declared automatically
+		prop readonly probe_id:ulong
+		// these are getters and setters:
+		prop batch_size:int
+			get
+				return self.pie.batch_size
+			set
+				if value < 1
+					warning("batch_size may not be < 1. Setting to 1.")
+				try
+					dest_dir:string = NValhalla.ensure_model_dir()
+					// TODO(mdegans): dynamically set precision
+					basename:string = @"redaction_b$(value)_fp32.engine"
+					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
+				except err:SetupError
+					warning(@"could not set model-engine-file on pie because: $(err.message)")
+				self.pie.batch_size = value
+
+		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
+		// __init__ in Python (that's "construct")
+		// https://stackoverflow.com/questions/34706079/class-construct-for-genie
+		// https://gstreamer.freedesktop.org/documentation/plugin-development/basics/boiler.html#element-metadata
+		//  init
+		//  	// so by trial and error, i figured out how to wrap lines. the ; must absolutely be at the end 
+		//  	// or else "syntax error, expected identifier"
+		//  	set_static_metadata(
+		//  		"nvredact",
+		//  		"Filter",
+		//  		"Redacts faces and license plates using nvinfer",
+		//  		"Michael de Gans <michael.john.degans@gmail.com>"
+		//  	);
+		//  	sink_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
+		//  	sink_template.direction = Gst.PadDirection.SINK
+		//  	sink_template.name_template = "sink"
+		//  	sink_template.presence = Gst.PadPresence.ALWAYS
+		//  	sink_template.static_caps = Gst.StaticCaps()
+		//  	sink_template.static_caps.string = "video/x-raw(memory:NVMM)"
+		//  	//  sink_template.static_caps.caps = ???
+		//  	// todo: figure out how to get the actual Gst.Caps
+		//  	add_static_pad_template(sink_template)
+		//  	src_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
+		//  	src_template.direction = Gst.PadDirection.SRC
+		//  	src_template.name_template = "src"
+		//  	src_template.presence = Gst.PadPresence.ALWAYS
+		//  	src_template.static_caps = Gst.StaticCaps()
+		//  	src_template.static_caps.string = "video/x-raw(memory:NVMM)"
+		//  	add_static_pad_template(src_template)
+
 
 
 	class RtspServerSink: Gst.Bin

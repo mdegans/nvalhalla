@@ -15,6 +15,7 @@ ds_libdir = '/opt/nvidia/deepstream/deepstream-4.0/lib'
 nvalhalla_deps = [
   dependency('glib-2.0', version: '>=2.50'),
   dependency('gobject-2.0', version: '>=2.0'),
+  dependency('gio-2.0', version: '>=2.0'),
   dependency('gstreamer-1.0', version: '>=1.0'),
   dependency('gstreamer-rtsp-server-1.0', version: '>=1.0'),
   dependency('gee-0.8'),

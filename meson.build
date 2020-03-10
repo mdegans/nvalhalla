@@ -14,3 +14,4 @@ subdir('src')
 
 install_subdir('models', install_dir: 'share/nvalhalla')
 install_subdir('nvinfer_configs', install_dir: 'share/nvalhalla')
+install_subdir('scripts', install_dir: 'share/nvalhalla')

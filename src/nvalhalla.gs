@@ -33,46 +33,13 @@
 
 namespace NValhalla
 
-	// https://mail.gnome.org/archives/vala-list/2017-August/msg00007.html
-	class SignalHandler
-		_app:App
-
-		construct(app:App)
-			self._app = app
-
-		def quit():bool
-			print(@"Process $((int)Posix.getpid()) has received SIGINT, ending...")
-			self._app.quit()
-			return Source.REMOVE
-
 	class App: Object
 		// TODO(mdegans): make this configurable
 		const WIDTH:int = 1920
 		const HEIGHT:int = 1080
 
-		// TODO(mdegans): move all this outside the App so args are parsed outside
-
 		// app stuff
 		_loop:GLib.MainLoop
-		_handler:SignalHandler
-		[CCode (array_length = false, array_null_terminated = true)]
-		_uris:static array of string
-		_sink_type:static string?  // ? means nullable in Genie/Vala
-		const _options: array of OptionEntry = {
-			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref _uris, "URI for uridecodebin", "URIS..."},
-			{"sink", 0, 0, OptionArg.STRING, ref _sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
-			{null}
-		}
-
-		def static validate_sink_type(val:string)
-			if val != "screen" and val != "rtsp"
-				error(@"'$val' is not a valid --sink: must be 'screen' or 'rtsp'")
-
-		def static validate_uri(val:string)
-			// i am guessing uridecodebin does this, but can't hurt
-			// TODO: read uridecodebin source and check
-			if GLib.Uri.parse_scheme(val) == null
-				error(@"$val is not a valid uri")
 
 		// pipeline and elements:
 		_pipeline:Gst.Pipeline
@@ -81,44 +48,21 @@ namespace NValhalla
 		// plain old elements
 		_muxer:Gst.Element
 		_muxer_link_lock:GLib.Mutex
-		_redact:NValhalla.Bins.Redaction
+		_redact:NValhalla.Bins.Redactor
 		_tiler:Gst.Element
 		_sink:Gst.Element
 
-		construct(args:array of string, loop:GLib.MainLoop?)
-			try
-				var opt_context = new OptionContext ("- NValhalla stream redactor")
-				opt_context.set_help_enabled (true)
-				opt_context.add_main_entries (_options, null)
-				opt_context.add_group(Gst.init_get_option_group())
-				opt_context.parse (ref args)
-			except e:OptionError
-				error("%s\n", e.message)
-			// todo: implement proper GLib way to do this
-			// having trouble figuring out OptionArg.CALLBACK
-			// proper way is to throw an error whiw is caught and repored above
-			// https://valadoc.org/glib-2.0/GLib.Error.html
-			if _sink_type != null
-				validate_sink_type(_sink_type)
-			for uri in _uris
-				validate_uri(uri)
-
+		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
 			// assign or create a GLib Main Loop
 			if loop != null
 				self._loop = loop
 			else
 				self._loop = new GLib.MainLoop()
 
-			// setup a new SignalHandler to quit the main loop
-			self._handler = new SignalHandler(self)
-			Unix.signal_add(Posix.Signal.INT, self._handler.quit)
-
 			// make the pipeline and connect the _on_message bus callback
-			// mdegans(todo: find out how to count instances in vala and append a count to the name)
 			self._pipeline = new Gst.Pipeline(null)
 			bus:Gst.Bus = self._pipeline.get_bus()
 			bus.add_watch(GLib.Priority.DEFAULT, self._on_message)
-			// bus gets unreferenced automatically at end of context (construct)
 
 			// make a new list of sources (Gee.ArrayList)
 			self._sources = new list of Gst.Element
@@ -130,7 +74,7 @@ namespace NValhalla
 			self._muxer_link_lock = GLib.Mutex()
 
 			// if no uris given try to make a camera source
-			if _uris.length == 0
+			if args.uris.length == 0
 				print("no --uris specified... using nvarguscamerasrc")
 				camera:Gst.Element = Gst.ElementFactory.make("nvarguscamerasrc", "camera")
 				if camera == null or not self._pipeline.add(camera)
@@ -141,13 +85,18 @@ namespace NValhalla
 			// else, create a uridecodebin for each of the supplied sources
 			else
 				i:int = 0
-				for uri in _uris
+				for uri in args.uris
 					debug(@"adding: $uri")
 					// TODO(mdegans): figure out how to get uridecodebin to skip audio streams
 					// necessarily there is a way from browsing uridecodebin docs. needs experimenting
 					src:Gst.Element = Gst.ElementFactory.make("uridecodebin", @"source_$i")
-					if src == null or not self._pipeline.add(src)
+					if src == null
 						warning(@"failed to create source for $uri")
+						continue
+					if not self._pipeline.add(src)
+						warning(@"could not add $(src.name) to pipeline")
+						// i think Vala might do this automatically but haven't checked the C
+						src.unref()
 						continue
 
 					// set source properties
@@ -168,10 +117,11 @@ namespace NValhalla
 			if self._sources.size == 0
 				error("no sources could be created")
 
-			// create a new redaction bin and set the batch size for the nvinfer element
-			self._redact = new NValhalla.Bins.Redaction("redact", null, self._sources.size)
+			// create a new redactor bin and set the batch size for the nvinfer element
+			self._redact = new NValhalla.Bins.Redactor("redact")
 			if self._redact == null or not self._pipeline.add(self._redact)
-				error("failed to create or add redaction bin")
+				error("failed to create or add Redactor bin")
+			self._redact.set_property("batch-size", self._sources.size)
 
 			// set up the multi-stream tiler
 			self._tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
@@ -195,11 +145,11 @@ namespace NValhalla
 			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
 
 			// add the sink
-			if _sink_type == null or _sink_type == "screen" 
+			if args.sink_type == null or args.sink_type == "screen" 
 				debug(@"creating nvoverlay sink")
 				self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
 				self._sink.set_property("qos", false)
-			else if _sink_type == "rtsp"
+			else if args.sink_type == "rtsp"
 				debug(@"creating a rtsp sink bin for")
 				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
 			else
@@ -249,8 +199,8 @@ namespace NValhalla
 			debug(@"got muxer lock for $(src.name)")
 
 			// this needs to be updated on pad added or flickering occurs with the osd
-			debug(@"setting muxer batch-size to $(self._muxer.numsinkpads + 1)")
-			self._muxer.set_property("batch-size", self._muxer.numsinkpads + 1)
+			//  debug(@"setting muxer batch-size to $(self._muxer.numsinkpads + 1)")
+			//  self._muxer.set_property("batch-size", self._muxer.numsinkpads + 1)
 
 			sink_pad_name:string = @"sink_$(self._muxer.numsinkpads)"
 			debug(@"requesting pad $sink_pad_name")
@@ -308,6 +258,7 @@ namespace NValhalla
 				self._loop.run()
 
 		def quit()
-			self._loop.quit()
+			if self._loop.is_running()
+				self._loop.quit()
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).quit")
 			self._pipeline.set_state(Gst.State.NULL)
