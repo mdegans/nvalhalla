@@ -136,7 +136,7 @@ namespace NValhalla
 			self._tiler.set_property("width", WIDTH)
 			self._tiler.set_property("height", HEIGHT)
 
-			self._muxer.set_property("batch-size", 1)
+			self._muxer.set_property("batch-size", self._sources.size)
 			self._muxer.set_property("live-source", true)
 			// TODO(mdegans): see if the scaling prior to inference helps or
 			// hurts performance.
