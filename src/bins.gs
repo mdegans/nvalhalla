@@ -63,7 +63,24 @@ namespace NValhalla.Bins
 		const PROTO_BASENAME:string = "redactor.prototxt"
 		const LABEL_BASENAME:string = "redactor_labels.txt"
 
+		// this is like a read only @property in python. a _probe_id is declared automatically
 		prop readonly config:dict of string,string
+		prop readonly probe_id:ulong
+		// a property with a getter and setter:
+		prop batch_size:int
+			get
+				return self.pie.batch_size
+			set
+				if value < 1
+					warning("batch_size may not be < 1. Setting to 1.")
+				try
+					dest_dir:string = NValhalla.ensure_model_dir()
+					// TODO(mdegans): dynamically set precision
+					basename:string = @"redaction_b$(value)_fp32.engine"
+					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
+				except err:SetupError
+					warning(@"could not set model-engine-file on pie because: $(err.message)")
+				self.pie.batch_size = value
 
 		construct(name:string?)
 			try
@@ -184,24 +201,6 @@ namespace NValhalla.Bins
 		osdconv:Gst.Element
 		//  osdcaps:Gst.Element
 		osd:Gst.Element
-
-		// this is like a read only @property in python. a _probe_id is declared automatically
-		prop readonly probe_id:ulong
-		// these are getters and setters:
-		prop batch_size:int
-			get
-				return self.pie.batch_size
-			set
-				if value < 1
-					warning("batch_size may not be < 1. Setting to 1.")
-				try
-					dest_dir:string = NValhalla.ensure_model_dir()
-					// TODO(mdegans): dynamically set precision
-					basename:string = @"redaction_b$(value)_fp32.engine"
-					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
-				except err:SetupError
-					warning(@"could not set model-engine-file on pie because: $(err.message)")
-				self.pie.batch_size = value
 
 		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
 		// __init__ in Python (that's "construct")
