@@ -198,10 +198,6 @@ namespace NValhalla
 			self._muxer_link_lock.lock()
 			debug(@"got muxer lock for $(src.name)")
 
-			// this needs to be updated on pad added or flickering occurs with the osd
-			//  debug(@"setting muxer batch-size to $(self._muxer.numsinkpads + 1)")
-			//  self._muxer.set_property("batch-size", self._muxer.numsinkpads + 1)
-
 			sink_pad_name:string = @"sink_$(self._muxer.numsinkpads)"
 			debug(@"requesting pad $sink_pad_name")
 			sink_pad:Gst.Pad = self._muxer.get_request_pad(sink_pad_name)
