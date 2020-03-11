@@ -49,7 +49,6 @@ namespace NValhalla
 		_muxer:Gst.Element
 		_muxer_link_lock:GLib.Mutex
 		_redact:NValhalla.Bins.Redactor
-		_tiler:Gst.Element
 		_sink:Gst.Element
 
 		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
@@ -123,20 +122,10 @@ namespace NValhalla
 				error("failed to create or add Redactor bin")
 			self._redact.set_property("batch-size", self._sources.size)
 
-			// set up the multi-stream tiler
-			self._tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
-			if self._tiler == null or not self._pipeline.add(self._tiler)
-				error("could not create or add stream tiler")
-
 			// calculate the number of columns and rows required:
 			rows_and_columns:int = (int) Math.ceilf(Math.sqrtf((float) self._sources.size))
 
-			self._tiler.set_property("rows", rows_and_columns)
-			self._tiler.set_property("columns", rows_and_columns)
-			self._tiler.set_property("width", WIDTH)
-			self._tiler.set_property("height", HEIGHT)
-
-			self._muxer.set_property("batch-size", 1)
+			self._muxer.set_property("batch-size", self._sources.size)
 			self._muxer.set_property("live-source", true)
 			// TODO(mdegans): see if the scaling prior to inference helps or
 			// hurts performance.
@@ -160,12 +149,8 @@ namespace NValhalla
 			// link everything: (sources are linked to callback by muxer)
 			if not self._muxer.link(self._redact)
 				error("could not mix stream muxer to redaction bin")
-			if not self._redact.link(self._tiler)
-				error("could ont link redaction bin to stream tiler")
-			// test linkage: (no inference)
-			//  self._muxer.link(self._tiler)
-			if not self._tiler.link(self._sink)
-				error("could not link stream tiler to sink")
+			if not self._redact.link(self._sink)
+				error("could ont link redaction bin to sink")
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)

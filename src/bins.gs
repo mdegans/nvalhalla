@@ -63,6 +63,17 @@ namespace NValhalla.Bins
 		const PROTO_BASENAME:string = "redactor.prototxt"
 		const LABEL_BASENAME:string = "redactor_labels.txt"
 
+		// Redactor elements:
+		pie:dynamic Gst.Element  
+		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
+		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
+		// i don't even remember and can't find it again on a Google....
+		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
+		osdconv:Gst.Element
+		tiler:Gst.Element
+		//  osdcaps:Gst.Element
+		osd:Gst.Element
+
 		// this is like a read only @property in python. a _probe_id is declared automatically
 		prop readonly config:dict of string,string
 		prop readonly probe_id:ulong
@@ -81,6 +92,12 @@ namespace NValhalla.Bins
 					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
 				except err:SetupError
 					warning(@"could not set model-engine-file on pie because: $(err.message)")
+				// calculate the number of columns and rows required:
+				rows_and_columns:int = (int) Math.ceilf(Math.sqrtf((float) value))
+				self.tiler.set_property("rows", rows_and_columns)
+				self.tiler.set_property("columns", rows_and_columns)
+				self.tiler.set_property("width", NValhalla.App.WIDTH)
+				self.tiler.set_property("height", NValhalla.App.HEIGHT)
 				self.pie.batch_size = value
 
 		construct(name:string?)
@@ -98,6 +115,11 @@ namespace NValhalla.Bins
 			for var entry in _config.entries
 				self.pie.set_property(entry.key, entry.value)
 
+			// set up the multi-stream tiler
+			self.tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
+			if self.tiler == null or not self.add(self.tiler)
+				error("could not create or add stream tiler")
+
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
 			if self.osdconv == null or not self.add(self.osdconv)
@@ -109,8 +131,8 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvvideoconvert ! nvdsosd")
+			if not self.pie.link_many(self.tiler, self.osdconv, self.osd)
+				error(@"$(self.name) faild to link nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
 
 			// connect the buffer callback to the sink pad
 			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
@@ -192,16 +214,6 @@ namespace NValhalla.Bins
 			// this may make more sense when "labelfile-path, model-file, and proto-file"
 			conf["config-file-path"] = config_dest
 			return conf
-
-		// Redactor elements:
-		pie:dynamic Gst.Element  
-		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
-		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
-		// i don't even remember and can't find it again on a Google....
-		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
-		osdconv:Gst.Element
-		//  osdcaps:Gst.Element
-		osd:Gst.Element
 
 		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
 		// __init__ in Python (that's "construct")
