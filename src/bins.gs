@@ -373,5 +373,5 @@ namespace NValhalla.Bins
 
 			self._uri = @"rtsp://$(GLib.Environment.get_host_name()):8554/nvalhalla"
 			// TODO(mdegans): replace print with proper Gst logging
-			print(@"$(self.name) serving rtsp on $(self.uri)")
+			debug(@"$(self.name) serving rtsp on $(self.uri)")
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
