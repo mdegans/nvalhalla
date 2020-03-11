@@ -73,6 +73,7 @@ namespace NValhalla.Bins
 			set
 				if value < 1
 					warning("batch_size may not be < 1. Setting to 1.")
+					value = 1
 				try
 					dest_dir:string = NValhalla.ensure_model_dir()
 					// TODO(mdegans): dynamically set precision
