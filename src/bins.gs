@@ -269,10 +269,8 @@ namespace NValhalla.Bins
 		// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 		// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 		// DEALINGS IN THE SOFTWARE.
-		const DEFAULT_HOST:string = "127.0.0.1"
-		const DEFAULT_PORT:int = 5400
-		const DEFAULT_ASYNC:bool = false
-		const DEFAULT_SYNC:bool = true
+		const UDP_HOST:string = "127.0.0.1"
+		const UDP_PORT:int = 5400
 
 		prop readonly uri:string
 
@@ -329,11 +327,11 @@ namespace NValhalla.Bins
 			self.udpsink = Gst.ElementFactory.make("udpsink", "udpsink")
 			if self.udpsink == null or not self.add(self.udpsink)
 				error(@"$(self.name) could not create or add udpsink element")
-			self.udpsink.set_property("host", DEFAULT_HOST)
+			self.udpsink.set_property("host", UDP_HOST)
 			// TODO: check if port is in use and increment until finding unused
-			self.udpsink.set_property("port", DEFAULT_PORT)
-			self.udpsink.set_property("async", DEFAULT_ASYNC)
-			self.udpsink.set_property("sync", DEFAULT_SYNC)
+			self.udpsink.set_property("port", UDP_PORT)
+			self.udpsink.set_property("async", false)
+			self.udpsink.set_property("sync", true)
 
 			//  Element.link_many() exists unlike Python, which is missing it for
 			//  unknown reasons that are probbably good ones
