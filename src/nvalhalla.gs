@@ -86,8 +86,6 @@ namespace NValhalla
 				i:int = 0
 				for uri in args.uris
 					debug(@"adding: $uri")
-					// TODO(mdegans): figure out how to get uridecodebin to skip audio streams
-					// necessarily there is a way from browsing uridecodebin docs. needs experimenting
 					src:Gst.Element = Gst.ElementFactory.make("uridecodebin", @"source_$i")
 					if src == null
 						warning(@"failed to create source for $uri")
