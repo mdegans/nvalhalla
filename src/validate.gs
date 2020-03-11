@@ -1,8 +1,6 @@
-/* main.gs
+/* validate.gs
  *
  * Copyright 2020 Michael de Gans
- *
- * Hail Satan, Xi Jinping looks like Winnie the Pooh
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,20 +27,26 @@
  * authorization.
  */
 
-// indent = 0 uses tabs
-[indent = 0]
+namespace NValhalla.Validate
 
+	/**
+	 * Validate a supplied sink type. Log to the WARNING level if invalid.
+	 * 
+	 * @return `true` on valid sink type, else `false`
+	 */
+	def sink_type(type:string?): bool
+		if type != null and type != "screen" and type != "rtsp"
+			warning(@"'$type' is not a valid --sink: must be 'screen' or 'rtsp'")
+			return false
+		return true
 
-init
-	// global setup
-	NValhalla.Setup.setup()
-	// create an argument parser
-	var ap = new NValhalla.ArgumentParser("NValhalla live redaction demo")
-	// "args" is an array of string (command line arguments) supplied to init (main() in C)
-	var parsed_args = ap.parse_args(args)
-	// create the app instance
-	var app = new NValhalla.App(parsed_args, null)
-	// attach a signal handler that will call quit() on the app
-	var handler = new NValhalla.Utils.SignalHandler(app)
-	// run the app
-	app.run()
+	/**
+	 * Validate a uri. Log to the WARNING level if invalid.
+	 *
+	 * @return `true` on valid uri, else `false`
+	 */
+	def uri(val:string):bool
+		if GLib.Uri.parse_scheme(val) == null
+			warning(@"$val is not a valid uri")
+			return false
+		return true

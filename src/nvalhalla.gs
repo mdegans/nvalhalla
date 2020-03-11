@@ -1,8 +1,6 @@
-/* mce.gs
+/* nvalhalla.gs
  *
  * Copyright 2020 Michael de Gans
- *
- * Hail Satan, Xi Jinping looks like Winnie the Pooh
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -33,17 +31,117 @@
 
 namespace NValhalla
 
+	/**
+	 * A class to store and validate arguments for Nvalhalla like a python namespace object returned by argparse
+	 */
+	class Args: Object
+		_uris:array of string
+		_sink_type:string?
+
+		/**
+		 * array of validated URIs
+		 *
+		 * @throws NValhalla.Validate.ValidationError on any bad uri in the array
+		 */
+		prop uris:array of string
+			get
+				return self._uris
+			set
+				var tmp = new list of string
+				for uri in value
+					if NValhalla.Validate.uri(uri)
+						tmp.add(uri)
+				self._uris = tmp.to_array()
+		/**
+		 * sink type ("rtsp" or "screen")
+		 *
+		 * @throws NValhalla.Validate.ValidationError on bad sink type
+		 */
+		prop sink_type:string? // ? means nullable in Genie/Vala
+			get
+				return self._sink_type
+			set
+				if NValhalla.Validate.sink_type(value)
+					self._sink_type = value
+
+		construct(uris:array of string, sink_type:string?)
+			self.uris = uris
+			self.sink_type = sink_type
+
+	/**
+	 * An argument parser class for NValhalla a la argparse. Also initializes gstreamer on {@link ArgumentParser.parse_args}.
+	 */
+	class ArgumentParser: Object
+		[CCode (array_length = false, array_null_terminated = true)]
+		/**
+		 * raw, unvalidated, URIs
+		 */
+		uris:static array of string
+		/**
+		 * A raw, unvalidated, sink type.
+		 */
+		sink_type:static string?
+		/**
+		 * command line options for {@link GLib.OptionContext} 
+		 */
+		const options: array of OptionEntry = {
+			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, "URI for uridecodebin", "URIS..."},
+			{"sink", 0, 0, OptionArg.STRING, ref sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
+			{null}
+		}
+		/**
+		 * An app description for the {@link GLib.OptionContext} constructor.
+		 *
+		 * This should be a short description of what your app does.
+		 */
+		description:string
+		/**
+		 * Create a new ArgumentParser
+		 * 
+		 * @param description set the {@link description} of the app
+		 */
+		construct(description:string?)
+			self.description = description
+		
+		/**
+		 * Parse args from the command line
+		 *
+		 * @return validated {@link NValhalla.Args} to construct a {@link NValhalla.App} with.
+		 */
+		def parse_args(args:array of string): Args
+			ret:Args
+			try
+				var opt_context = new GLib.OptionContext(self.description)
+				opt_context.set_help_enabled(true)
+				opt_context.add_main_entries(options, null)
+				// add the option group from gstreame
+				opt_context.add_group(Gst.init_get_option_group())
+				opt_context.parse(ref args)
+				ret = new Args(uris, sink_type)
+			// todo: figure out the syntax for combining these (eg. except err:(OptionError, ValidationError))
+			except err:OptionError
+				error(@"parsing failed because: $(err.message)")
+			return ret
+
+	/**
+	 * Main app class.
+	 */
 	class App: Object
 		// TODO(mdegans): make this configurable
+		/**
+		 * the output width
+		 */
 		const WIDTH:int = 1920
+		/**
+		 * the output height
+		 */
 		const HEIGHT:int = 1080
 
-		// app stuff
+		// a main loop to start and quit
 		_loop:GLib.MainLoop
-
 		// pipeline and elements:
 		_pipeline:Gst.Pipeline
-		// a list of elements to iterate through, but perhaps some builtin of pipeline can be used instead:
+		// a handy list of sources to iterate through
 		_sources:list of Gst.Element
 		// plain old elements
 		_muxer:Gst.Element
@@ -51,6 +149,13 @@ namespace NValhalla
 		_redact:NValhalla.Bins.Redactor
 		_sink:dynamic Gst.Element
 
+		/**
+		 * Make a new NValhalla.App
+		 *
+		 * @param args	''parsed'' command line arguments
+		 * @param loop	a {@link GLib.MainLoop} to start on {@link play} and quit on {@link quit}.
+		 * 				If null, a new MainLoop will be created.
+		 */
 		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
 			// assign or create a GLib Main Loop
 			if loop != null
@@ -231,12 +336,18 @@ namespace NValhalla
 					debug(@"BUS_MSG:$(message.src.name):$(message.type.get_name())")
 			return true
 
-
+		/**
+		 * Set {@link Gst.Pipeline} to {@link Gst.State.PLAYING} and start the {@link GLib.MainLoop} if not already running.
+		 */
 		def run()
 			self._pipeline.set_state(Gst.State.PLAYING)
 			if not self._loop.is_running()
 				self._loop.run()
 
+		/**
+		 * Quit the {@link GLib.MainLoop} if running, dump a pipeline to .dot file, and
+		 * set the {@link Gst.State} of {@link Gst.Pipeline} to {@link Gst.State.NULL} and 
+		 */
 		def quit()
 			if self._loop.is_running()
 				self._loop.quit()

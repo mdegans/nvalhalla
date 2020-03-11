@@ -1,4 +1,4 @@
-/* mce.gs
+/* bins.gs
  *
  * Copyright 2020 Michael de Gans
  *
@@ -55,6 +55,14 @@ def extern on_buffer_osd_redact(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProb
 
 namespace NValhalla.Bins
 
+	// TODO(mdegans): consider separating redaction and tiling
+	/**
+	 * A {@link Gst.Bin} that redacts and tiles multiple video streams. it:
+	 *
+	 * * has static ghost pads and can be linked with {@link Gst.Element.link}.
+	 * * expects a nvstreammux before and some kind of sink after.
+	 * * It's string approximation would be "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
+	 */
 	class Redactor:Gst.Bin
 
 		// constants needed by the redactor
@@ -63,21 +71,36 @@ namespace NValhalla.Bins
 		const PROTO_BASENAME:string = "redactor.prototxt"
 		const LABEL_BASENAME:string = "redactor_labels.txt"
 
-		// Redactor elements:
-		pie:dynamic Gst.Element  
-		// dynamic means no need to obj.get_property("foo")... you can obj.foo instead like python obj.props.foo
-		// "dynamic" like half of Genie and Vala, is barely documented, don't ask me where i found out about it
-		// i don't even remember and can't find it again on a Google....
-		// and this may have been it: https://mail.gnome.org/archives/vala-list/2012-March/msg00009.html
-		osdconv:Gst.Element
+		/** primary nvinfer engine */
+		pie:dynamic Gst.Element
+
+		/** nvmultistreamtiler to tile the multiple streams */
 		tiler:Gst.Element
-		//  osdcaps:Gst.Element
+
+		/** nvvideoconvert for the osd */
+		osdconv:Gst.Element
+
+		/** nvdsosd to draw boxes */
 		osd:Gst.Element
 
-		// this is like a read only @property in python. a _probe_id is declared automatically
+		/**
+		 * Read only partial config for the primary inference engine.
+		 *
+		 * ''Note:'' for now this only contains the config-file-path.
+		 */
 		prop readonly config:dict of string,string
+
+		/** the pad probe id for the buffer callback */
 		prop readonly probe_id:ulong
-		// a property with a getter and setter:
+
+		/**
+		 * ''get'' the {@link pie} ''batch-size''
+		 *
+		 * ''set'' the {@link pie} ''batch-size'' and ''model-engine-file'' property, 
+		 * and ''set'' the {@link tiler} ''rows'' and ''columns'' to their ideal values.
+		 *
+		 * Usually this should be set to the number of sources.
+		 */
 		prop batch_size:int
 			get
 				return self.pie.batch_size
@@ -86,24 +109,28 @@ namespace NValhalla.Bins
 					warning("batch_size may not be < 1. Setting to 1.")
 					value = 1
 				try
-					dest_dir:string = NValhalla.ensure_model_dir()
+					dest_dir:string = NValhalla.Setup.model_dir()
 					// TODO(mdegans): dynamically set precision
 					basename:string = @"redaction_b$(value)_fp32.engine"
 					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
-				except err:SetupError
+				except err:FileError
 					warning(@"could not set model-engine-file on pie because: $(err.message)")
 				// calculate the number of columns and rows required:
 				rows_and_columns:int = (int) Math.ceilf(Math.sqrtf((float) value))
 				self.tiler.set_property("rows", rows_and_columns)
 				self.tiler.set_property("columns", rows_and_columns)
-				self.tiler.set_property("width", NValhalla.App.WIDTH)
-				self.tiler.set_property("height", NValhalla.App.HEIGHT)
 				self.pie.batch_size = value
 
+		/**
+		 * construct a new Redactor {@link Gst.Bin}
+		 *
+		 * @param name a name for this or null for no name
+		 */
 		construct(name:string?)
 			try
 				_config = setup()
-			except err:NValhalla.SetupError
+			except err:Error
+				// TODO: recover from failed setup with some fallback
 				error("Redactor setup failed because: %s\n", err.message)
 			if name != null
 				self.name = name
@@ -119,6 +146,8 @@ namespace NValhalla.Bins
 			self.tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self.tiler == null or not self.add(self.tiler)
 				error("could not create or add stream tiler")
+			self.tiler.set_property("width", NValhalla.App.WIDTH)
+			self.tiler.set_property("height", NValhalla.App.HEIGHT)
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
@@ -164,18 +193,21 @@ namespace NValhalla.Bins
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
 
+		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
 		/**
-		 * Symlink reqiured models into user model path
+		 * Copy reqiured models into user model path if they don't already exist. This is necessary becuase 
+		 * no matter what, nvinfer will try to write to the model path, and will follow symlinks.
 		 *
 		 * @return a dict (libgee's HashMap) of string,string with the model-file, proto-file, and label-file
+		 * @throws Error on failure to copy config file or create a path
 		 */
-		def static ensure_models():dict of string,string raises NValhalla.SetupError
-			dest_dir:string = NValhalla.ensure_model_dir()
+		def static ensure_models():dict of string,string raises Error
+			dest_dir:string = NValhalla.Setup.model_dir()
 			// set up source paths
 			var sources = new dict of string,string
-			sources["model-file"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, MODEL_BASENAME)
-			sources["proto-file"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, PROTO_BASENAME)
-			sources["labelfile-path"] = GLib.Path.build_filename(NValhalla.MODEL_DIR, LABEL_BASENAME)
+			sources["model-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_BASENAME)
+			sources["proto-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, PROTO_BASENAME)
+			sources["labelfile-path"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, LABEL_BASENAME)
 			// set up dest paths
 			var dests = new dict of string,string
 			dests["model-file"] = GLib.Path.build_filename(dest_dir, MODEL_BASENAME)
@@ -185,11 +217,7 @@ namespace NValhalla.Bins
 			for var key in sources.keys
 				if GLib.FileUtils.test(dests[key], GLib.FileTest.EXISTS)
 					continue
-				try
-					NValhalla.sync_copy_file(sources[key], dests[key], null)
-				except err:Error
-					raise new NValhalla.SetupError.COPY( \
-						@"could not copy $(sources[key]) to $(dests[key]) because: $(err.message))")
+				NValhalla.Utils.sync_copy_file(sources[key], dests[key], null)
 			return dests
 
 		/**
@@ -198,18 +226,15 @@ namespace NValhalla.Bins
 		 * run ensure_config, run ensure_model_dir, and run ensure_models
 		 *
 		 * @return a dict (libgee's HashMap) of string,string containing parameters for the primary inference engine
+		 * @throws Error on failure to copy config file or create a path
 		 */
-		def static setup():dict of string,string raises NValhalla.SetupError
+		def static setup():dict of string,string raises Error
 			ensure_models()
-			config_source:string = GLib.Path.build_filename(NValhalla.NVINFER_CONFIG_DIR, CONFIG_BASENAME)
-			config_dest:string = GLib.Path.build_filename(NValhalla.ensure_config_dir(), CONFIG_BASENAME)
+			config_source:string = GLib.Path.build_filename(NValhalla.Setup.NVINFER_CONFIG_DIR, CONFIG_BASENAME)
+			config_dest:string = GLib.Path.build_filename(NValhalla.Setup.config_dir(), CONFIG_BASENAME)
 			// load the config source
 			if not GLib.FileUtils.test(config_dest, GLib.FileTest.EXISTS)
-				try
-					NValhalla.sync_copy_file(config_source, config_dest, null)
-				except err:Error
-					raise new NValhalla.SetupError.COPY( \
-						@"could not copy $config_source to $config_dest becuase: $(err.message)")
+				NValhalla.Utils.sync_copy_file(config_source, config_dest, null)
 			var conf = new dict of string,string
 			// this may make more sense when "labelfile-path, model-file, and proto-file"
 			conf["config-file-path"] = config_dest
@@ -246,10 +271,17 @@ namespace NValhalla.Bins
 		//  	add_static_pad_template(src_template)
 
 
-
+	/**
+	 * a {@link Gst.Bin} to be used a sink to serve rtsp
+	 *
+	 * This is based on Nvidia's python code doing the same thing and uses 
+	 * {@link Gst.RTSPServer} internally.
+	 * 
+	 * ''Note'': For the moment, this uses udpsink and udpsrc to transport
+	 * video from the real end of the pipeline to the server so all of it's
+	 * internals won't show in a .dot file or pdf.
+	 */
 	class RtspServerSink: Gst.Bin
-		// this Bin is mostly ported from deepstream-test1.py by Nvidia, so...
-		//
 		// Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
 		//
 		// Permission is hereby granted, free of charge, to any person obtaining a
@@ -287,6 +319,10 @@ namespace NValhalla.Bins
 		factory:Gst.RTSPServer.MediaFactory
 
 		// TODO(mdegans), add port parameter
+		/** construct a new instance
+		 *
+		 * @param name a name for this or null for no name
+		 */
 		construct(name:string?)
 			if name != null
 				self.name = name
