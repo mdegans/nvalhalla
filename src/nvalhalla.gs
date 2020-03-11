@@ -49,7 +49,7 @@ namespace NValhalla
 		_muxer:Gst.Element
 		_muxer_link_lock:GLib.Mutex
 		_redact:NValhalla.Bins.Redactor
-		_sink:Gst.Element
+		_sink:dynamic Gst.Element
 
 		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
 			// assign or create a GLib Main Loop
@@ -139,6 +139,7 @@ namespace NValhalla
 			else if args.sink_type == "rtsp"
 				debug(@"creating a rtsp sink bin for")
 				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
+				print(@"SERVING RTSP ON: $((string)self._sink.uri)")
 			else
 				warning(@"--sink validator is broken. please report.")
 			if self._sink == null or not self._pipeline.add(self._sink)
