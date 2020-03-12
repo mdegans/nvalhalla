@@ -34,7 +34,7 @@ nvalhalla_deps = [
 executable('nvalhalla', nvalhalla_sources,
   vala_args: [
     '--header=nvalhalla.h',
-    '--vapi=nvalhalla.vapi'
+    '--vapi=nvalhalla.vapi',
   ],
   dependencies: nvalhalla_deps,
   install: true,
