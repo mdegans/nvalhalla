@@ -184,6 +184,8 @@ namespace NValhalla
 				if camera == null or not self._pipeline.add(camera)
 					error("camera could not be created or added to pipeline")
 				self._sources.add(camera)
+				// this is untested and shouldn't actually work
+				// TODO(mdegans): test on Nano once model is optimized
 				if not camera.link(self._muxer)
 					error("camera could not be linked to stream muxer")
 			// else, create a uridecodebin for each of the supplied sources
