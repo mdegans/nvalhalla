@@ -1,8 +1,6 @@
-/* mce.gs
+/* main.gs
  *
  * Copyright 2020 Michael de Gans
- *
- * Hail Satan, Xi Jinping looks like Winnie the Pooh
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -32,6 +30,17 @@
 // indent = 0 uses tabs
 [indent = 0]
 
+
 init
-	var app = new NValhalla(args, null)
+	// global setup
+	NValhalla.Setup.setup()
+	// create an argument parser
+	var ap = new NValhalla.ArgumentParser("NValhalla live redaction demo")
+	// "args" is an array of string (command line arguments) supplied to init (main() in C)
+	var parsed_args = ap.parse_args(args)
+	// create the app instance
+	var app = new NValhalla.App(parsed_args, null)
+	// attach a signal handler that will call quit() on the app
+	var handler = new NValhalla.Utils.SignalHandler(app)
+	// run the app
 	app.run()
