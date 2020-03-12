@@ -75,7 +75,7 @@ namespace NValhalla.Bins
 		pie:dynamic Gst.Element
 
 		/** nvmultistreamtiler to tile the multiple streams */
-		tiler:Gst.Element
+		tiler:dynamic Gst.Element
 
 		/** nvvideoconvert for the osd */
 		osdconv:Gst.Element
@@ -122,6 +122,24 @@ namespace NValhalla.Bins
 				self.pie.batch_size = value
 
 		/**
+		 * set/get the output width
+		 */
+		prop width:int
+			get
+				return self.tiler.width
+			set
+				self.tiler.width = value
+
+		/**
+		 * set/get the output height
+		 */
+		prop height:int
+			get
+				return self.tiler.height
+			set
+				self.tiler.height = value
+
+		/**
 		 * construct a new Redactor {@link Gst.Bin}
 		 *
 		 * @param name a name for this or null for no name
@@ -146,8 +164,8 @@ namespace NValhalla.Bins
 			self.tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self.tiler == null or not self.add(self.tiler)
 				error("could not create or add stream tiler")
-			self.tiler.set_property("width", NValhalla.App.WIDTH)
-			self.tiler.set_property("height", NValhalla.App.HEIGHT)
+			self.width = NValhalla.App.WIDTH
+			self.height = NValhalla.App.HEIGHT
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
