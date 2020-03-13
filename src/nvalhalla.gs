@@ -32,7 +32,8 @@
 namespace NValhalla
 
 	/**
-	 * A class to store and validate arguments for Nvalhalla like a python namespace object returned by argparse
+	 * A class to store and validate arguments for Nvalhalla like a python 
+	 * namespace object returned by argparse
 	 */
 	class Args: Object
 		_uris:array of string
@@ -41,7 +42,7 @@ namespace NValhalla
 		/**
 		 * array of validated URIs
 		 *
-		 * @throws NValhalla.Validate.ValidationError on any bad uri in the array
+		 * @throws NValhalla.Validate.ValidationError on any bad uri in array
 		 */
 		prop uris:array of string
 			get
@@ -69,7 +70,8 @@ namespace NValhalla
 			self.sink_type = sink_type
 
 	/**
-	 * An argument parser class for NValhalla a la argparse. Also initializes gstreamer on {@link ArgumentParser.parse_args}.
+	 * An argument parser class for NValhalla a la argparse. Also initializes 
+	 * gstreamer on {@link ArgumentParser.parse_args}.
 	 */
 	class ArgumentParser: Object
 		[CCode (array_length = false, array_null_terminated = true)]
@@ -85,7 +87,7 @@ namespace NValhalla
 		 * command line options for {@link GLib.OptionContext} 
 		 */
 		const options: array of OptionEntry = {
-			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, "URI for uridecodebin", "URIS..."},
+			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, \ "URI for uridecodebin", "URIS..."},
 			{"sink", 0, 0, OptionArg.STRING, ref sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
 			{null}
 		}
@@ -106,7 +108,8 @@ namespace NValhalla
 		/**
 		 * Parse args from the command line
 		 *
-		 * @return validated {@link NValhalla.Args} to construct a {@link NValhalla.App} with.
+		 * @return validated {@link NValhalla.Args} to construct a 
+		 * {@link NValhalla.App} with.
 		 */
 		def parse_args(args:array of string): Args
 			ret:Args
@@ -118,7 +121,8 @@ namespace NValhalla
 				opt_context.add_group(Gst.init_get_option_group())
 				opt_context.parse(ref args)
 				ret = new Args(uris, sink_type)
-			// todo: figure out the syntax for combining these (eg. except err:(OptionError, ValidationError))
+			// todo: figure out the syntax for combining these (eg. except 
+			// err:(OptionError, ValidationError))
 			except err:OptionError
 				error(@"parsing failed because: $(err.message)")
 			return ret
@@ -153,8 +157,9 @@ namespace NValhalla
 		 * Make a new NValhalla.App
 		 *
 		 * @param args	''parsed'' command line arguments
-		 * @param loop	a {@link GLib.MainLoop} to start on {@link play} and quit on {@link quit}.
-		 * 				If null, a new MainLoop will be created.
+		 * @param loop	a {@link GLib.MainLoop} to start on {@link play} and 
+		 *				quit on {@link quit}. If null, a new MainLoop will be 
+		 *				created.
 		 */
 		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
 			// assign or create a GLib Main Loop
