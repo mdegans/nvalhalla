@@ -2,7 +2,7 @@
 
 Is a simple DeepStream test app to perform live redaction an an arbitrary number of sources. NValhalla is written in [Genie, a Vala dialect](https://wiki.gnome.org/Projects/Genie).
 
-Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4 ...` where each --uri supplied is a valid uri accepted by [uridecodebin](https://gstreamer.freedesktop.org/documentation/playback/uridecodebin.html?gi-language=c). With no options, NValhalla will attempt to use nvarguscamerasrc. Full help, including --gst options are available with --help
+Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4 ...` where each --uri supplied is a valid uri accepted by [uridecodebin](https://gstreamer.freedesktop.org/documentation/playback/uridecodebin.html?gi-language=c). Full help, including --gst options are available with --help
 
 ## Requirements
 
