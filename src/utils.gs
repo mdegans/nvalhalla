@@ -59,7 +59,9 @@ namespace NValhalla.Utils
 	// alternative
 	/**
 	 * A signal handler class for {@link NValhalla.App}.
-	 * 
+	 *
+	 * https://mail.gnome.org/archives/vala-list/2017-August/msg00007.html
+	 *
 	 * Pass a {@link Nvalhalla.App} to the constructor and it will call 
 	 * {@link NValhalla.App.quit} on SIGINT.
 	 */
