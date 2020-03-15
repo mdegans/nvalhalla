@@ -67,7 +67,10 @@ namespace NValhalla.Utils
 	 */
 	class SignalHandler: Object
 		_app:NValhalla.App
-		_id:uint
+		/**
+		 * The id of signal handler returned by {@link GLib.Unix.signal_add}
+		 */
+		prop readonly id:uint
 
 		/**
 		 * Create a new instance of {@link NValhalla.Utils.SignalHandler].
