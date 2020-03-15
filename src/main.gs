@@ -36,7 +36,8 @@ init
 	NValhalla.Setup.setup()
 	// create an argument parser
 	var ap = new NValhalla.ArgumentParser("NValhalla live redaction demo")
-	// "args" is an array of string (command line arguments) supplied to init (main() in C)
+	// "args" is an array of string (command line arguments) supplied to init 
+	// (main() in C)
 	var parsed_args = ap.parse_args(args)
 	// create the app instance
 	var app = new NValhalla.App(parsed_args, null)
