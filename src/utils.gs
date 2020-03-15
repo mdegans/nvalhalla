@@ -85,3 +85,6 @@ namespace NValhalla.Utils
 			print(@"Process $((int)Posix.getpid()) has received SIGINT, ending...")
 			self._app.quit()
 			return Source.REMOVE
+
+		def remove():bool
+			return GLib.Source.remove(self._id)
