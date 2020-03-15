@@ -2,8 +2,8 @@
  *
  * Copyright 2020 Michael de Gans
  *
- * Hail Satan
- *
+ * Hail Satan 
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -398,16 +398,16 @@ namespace NValhalla.Bins
 
 			//  Element.link_many() exists unlike Python, which is missing it for
 			//  unknown reasons that are probbably good ones
-			if not self.converter.link_many( \
+			if not self.queue.link_many( \
+					self.converter, \
 					self.capsfilter, \
 					self.encoder, \
 					self.pay, \
-					self.queue, \
 					self.udpsink)  // trailing comma is not allowed in Genie :(
 				error(@"$(self.name) could not link elements together")
 			
 			// ghost the sink rce pad to the outside of the bin
-			inner_pad:Gst.Pad = self.converter.get_static_pad("sink")
+			inner_pad:Gst.Pad = self.queue.get_static_pad("sink")
 			sink_pad:Gst.GhostPad = new Gst.GhostPad.from_template("sink", inner_pad, inner_pad.padtemplate)
 			if sink_pad == null
 				error(@"$(self.name) could not create ghost sink pad from $(self.converter.name)")
