@@ -2,14 +2,14 @@ project('nvalhalla', ['c', 'vala'],        version: '0.1.0',
   meson_version: '>= 0.40.0',
 )
 
-# todo: figure out how to autodetect tegra
-
-add_project_arguments(
-  [
-    '--define=TEGRA',
-  ],
-  language: 'vala'
-)
+if target_machine.cpu_family() == 'aarch64'
+  add_project_arguments(
+    [
+      '--define=TEGRA',
+    ],
+    language: 'vala'
+  )
+endif
 
 subdir('src')
 subdir('docs')
