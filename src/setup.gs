@@ -75,8 +75,10 @@ namespace NValhalla.Setup
 	 * Setup a .dot dump dir (~/.nvalhalla/dot)
 	 *
 	 * * create ~/.nvalhalla/dot if it doesn't already exist
-	 * * set the GST_DEBUG_DUMP_DOT_DIR environment variable to the dir if it is not already set.
-	 * * copy a pdf conversion script into the folder if one doens't already exist
+	 * * set the GST_DEBUG_DUMP_DOT_DIR environment variable to the dir if it is
+	 * not already set.
+	 * * copy a pdf conversion script into the folder if one doens't already 
+	 * exist
 	 *
 	 * @return an absolute path
 	 * @throws GLib.FileError.FAILED on failure to create directory
@@ -95,7 +97,8 @@ namespace NValhalla.Setup
 	 * Setup environment variables and user config dirs.
 	 */
 	def static setup()
-		// set the environment variable to dump dot files ~/.nvalhalla if not already defined
+		// set the environment variable to dump dot files ~/.nvalhalla if not 
+		// already defined
 		try
 			dot_dir()
 			config_dir()

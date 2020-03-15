@@ -32,7 +32,8 @@ namespace NValhalla.Utils
 	/**
 	 * Copy a file synchronously from source_filename to dest_filename.
 	 *
-	 * To copy a file asynchronously, use the {@link GLib.File} interface directly.
+	 * To copy a file asynchronously, use the {@link GLib.File} interface 
+	 * directly.
 	 *
 	 * @throws Error on failure to copy a file
 	 */
@@ -43,7 +44,8 @@ namespace NValhalla.Utils
 		source.copy(dest, flags == null ? GLib.FileCopyFlags.NONE : flags , null, null)
 
 	/**
-	 * Make a directory(s) using {@link GLib.DirUtils.create_with_parents} in mode 0o755
+	 * Make a directory(s) using {@link GLib.DirUtils.create_with_parents} in
+	 * mode 0o755
 	 *
 	 * @throws GLib.FileError.FAILED on failure to create directory
 	 */
@@ -53,11 +55,13 @@ namespace NValhalla.Utils
 			raise new GLib.FileError.FAILED( \
 				@"could not create dir(s) at $dir");
 
-	// TODO(mdegans): a full GObject is possibly unnecessary here. find an alternative
+	// TODO(mdegans): a full GObject is possibly unnecessary here. find an
+	// alternative
 	/**
 	 * A signal handler class for {@link NValhalla.App}.
 	 * 
-	 * Pass a {@link Nvalhalla.App} to the constructor and it will call {@link NValhalla.App.quit} on SIGINT.
+	 * Pass a {@link Nvalhalla.App} to the constructor and it will call 
+	 * {@link NValhalla.App.quit} on SIGINT.
 	 */
 	class SignalHandler: Object
 		_app:NValhalla.App

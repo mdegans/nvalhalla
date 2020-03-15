@@ -32,7 +32,8 @@
 namespace NValhalla
 
 	/**
-	 * A class to store and validate arguments for Nvalhalla like a python namespace object returned by argparse
+	 * A class to store and validate arguments for Nvalhalla like a python 
+	 * namespace object returned by argparse. Validates properties on set.
 	 */
 	class Args: Object
 		_uris:array of string
@@ -40,8 +41,6 @@ namespace NValhalla
 
 		/**
 		 * array of validated URIs
-		 *
-		 * @throws NValhalla.Validate.ValidationError on any bad uri in the array
 		 */
 		prop uris:array of string
 			get
@@ -54,8 +53,6 @@ namespace NValhalla
 				self._uris = tmp.to_array()
 		/**
 		 * sink type ("rtsp" or "screen")
-		 *
-		 * @throws NValhalla.Validate.ValidationError on bad sink type
 		 */
 		prop sink_type:string? // ? means nullable in Genie/Vala
 			get
@@ -69,7 +66,8 @@ namespace NValhalla
 			self.sink_type = sink_type
 
 	/**
-	 * An argument parser class for NValhalla a la argparse. Also initializes gstreamer on {@link ArgumentParser.parse_args}.
+	 * An argument parser class for NValhalla a la argparse. Also initializes 
+	 * gstreamer on {@link ArgumentParser.parse_args}.
 	 */
 	class ArgumentParser: Object
 		[CCode (array_length = false, array_null_terminated = true)]
@@ -106,7 +104,8 @@ namespace NValhalla
 		/**
 		 * Parse args from the command line
 		 *
-		 * @return validated {@link NValhalla.Args} to construct a {@link NValhalla.App} with.
+		 * @return validated {@link NValhalla.Args} to construct a 
+		 * {@link NValhalla.App} with.
 		 */
 		def parse_args(args:array of string): Args
 			ret:Args
@@ -118,7 +117,6 @@ namespace NValhalla
 				opt_context.add_group(Gst.init_get_option_group())
 				opt_context.parse(ref args)
 				ret = new Args(uris, sink_type)
-			// todo: figure out the syntax for combining these (eg. except err:(OptionError, ValidationError))
 			except err:OptionError
 				error(@"parsing failed because: $(err.message)")
 			return ret
@@ -150,11 +148,12 @@ namespace NValhalla
 		_sink:dynamic Gst.Element
 
 		/**
-		 * Make a new NValhalla.App
+		 * Construct a new NValhalla.App
 		 *
 		 * @param args	''parsed'' command line arguments
-		 * @param loop	a {@link GLib.MainLoop} to start on {@link play} and quit on {@link quit}.
-		 * 				If null, a new MainLoop will be created.
+		 * @param loop	a {@link GLib.MainLoop} to start on {@link play} and 
+		 *				quit on {@link quit}. If null, a new MainLoop will be 
+		 *				created.
 		 */
 		construct(args:NValhalla.Args, loop:GLib.MainLoop?)
 			// assign or create a GLib Main Loop
@@ -184,6 +183,8 @@ namespace NValhalla
 				if camera == null or not self._pipeline.add(camera)
 					error("camera could not be created or added to pipeline")
 				self._sources.add(camera)
+				// this is untested and shouldn't actually work
+				// TODO(mdegans): test on Nano once model is optimized
 				if not camera.link(self._muxer)
 					error("camera could not be linked to stream muxer")
 			// else, create a uridecodebin for each of the supplied sources
@@ -197,7 +198,8 @@ namespace NValhalla
 						continue
 					if not self._pipeline.add(src)
 						warning(@"could not add $(src.name) to pipeline")
-						// i think Vala might do this automatically but haven't checked the C
+						// i think Vala might do this automatically but haven't 
+						// checked the C
 						src.unref()
 						continue
 
@@ -211,7 +213,8 @@ namespace NValhalla
 					src.pad_added.connect(self._on_src_pad_added)
 
 					// add the source to the _sources list
-					// (this may be pointless since finding the children propery)
+					// (this may be pointless since finding the children 
+					// propery)
 					self._sources.add(src)
 					i++
 
@@ -219,7 +222,8 @@ namespace NValhalla
 			if self._sources.size == 0
 				error("no sources could be created")
 
-			// create a new redactor bin and set the batch size for the nvinfer element
+			// create a new redactor bin and set the batch size for the nvinfer
+			// element
 			self._redact = new NValhalla.Bins.Redactor("redact")
 			if self._redact == null or not self._pipeline.add(self._redact)
 				error("failed to create or add Redactor bin")
@@ -234,7 +238,8 @@ namespace NValhalla
 			// hurts performance.
 			self._muxer.set_property("width", WIDTH / rows_and_columns)
 			self._muxer.set_property("height", HEIGHT / rows_and_columns)
-			self._muxer.set_property("batched-push-timeout", 333670)  // 10 frames of 29.97 fps
+			// 10 frames of 29.97 fps
+			self._muxer.set_property("batched-push-timeout", 333670)
 
 			// add the sink
 			if args.sink_type == null or args.sink_type == "screen" 
@@ -258,7 +263,8 @@ namespace NValhalla
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
-			// try to link the pads, check return, and warn if not OK and dump dot
+			// try to link the pads, check return, and warn if not OK and dump 
+			// dot
 			debug(@"trying to link $(src_pad.parent.name):$(src_pad.name) and $(sink_pad.parent.name):$(sink_pad.name)")
 			debug(@"$(src_pad.name) CAPS: $(src_pad.caps.to_string())")
 			debug(@"$(sink_pad.name) CAPS: $(sink_pad.caps.to_string())")
@@ -281,8 +287,8 @@ namespace NValhalla
 				debug(@"$(src_pad.name) is not a video pad. skipping.")
 				return
 
-			// without this lock it's possible to request multiple identical pads like:
-			// Padname sink_0 is not unique in element muxer, not adding
+			// without this lock it's possible to request multiple identical
+			// pads like: '"sink_0 is not unique in element muxer, not adding"
 			debug(@"getting muxer lock for $(src.name)")
 			self._muxer_link_lock.lock()
 			debug(@"got muxer lock for $(src.name)")
@@ -301,7 +307,8 @@ namespace NValhalla
 
 
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
-			// note: in Genie there is no fallthrough in a case block, so no need to break;
+			// note: in Genie there is no fallthrough in a case block unless a
+			// 'when' is empty, so no need to break (unless you want)
 			case message.type
 				when Gst.MessageType.QOS
 				when Gst.MessageType.BUFFERING
@@ -337,7 +344,8 @@ namespace NValhalla
 			return true
 
 		/**
-		 * Set {@link Gst.Pipeline} to {@link Gst.State.PLAYING} and start the {@link GLib.MainLoop} if not already running.
+		 * Set {@link Gst.Pipeline} to {@link Gst.State.PLAYING} and start the 
+		 * {@link GLib.MainLoop} if not already running.
 		 */
 		def run()
 			self._pipeline.set_state(Gst.State.PLAYING)
@@ -345,8 +353,9 @@ namespace NValhalla
 				self._loop.run()
 
 		/**
-		 * Quit the {@link GLib.MainLoop} if running, dump a pipeline to .dot file, and
-		 * set the {@link Gst.State} of {@link Gst.Pipeline} to {@link Gst.State.NULL} and 
+		 * Quit the {@link GLib.MainLoop} if running, dump a pipeline to .dot 
+		 * file, and set the {@link Gst.State} of {@link Gst.Pipeline} to 
+		 * {@link Gst.State.NULL}.
 		 */
 		def quit()
 			if self._loop.is_running()

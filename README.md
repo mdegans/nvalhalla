@@ -47,8 +47,8 @@ Basically, any uri supported by [uridecodebin](https://gstreamer.freedesktop.org
 
 ## FAQ
 
-- **Can this app do anything but redact** No, and it's hoped that you won't modify it to do anything harmful, since software for doing inferences on video, particularly face detection, has an immense potential for misuse.
-- **Can this app redact anything other than faces?** Yes. You can modify the model to do what you want by changing the config and models ~/.nvalhalla, however it will only redact IDs 0 and 1 unless you modify [cb_buffer.c](./src/cb_buffer.c).
+- **Can this app do anything but redact** No, and any potentially dangerous code (eg. dumping bounding boxes) has been removed. It's hoped that you won't modify it to do anything harmful, since software for detecting faces has an immense potential for misuse.
+- **Can this app redact anything other than faces?** Yes. You can modify the app to do what you want by changing the config and models ~/.nvalhalla, however it will only redact IDs 0 and 1 unless you modify [cb_buffer.c](./src/cb_buffer.c).
 - **This app isn't very useful** No, no, it isn't. It's meant mostly as a demo to see whether it's possible to write DeepStream code in Genie.
 - **Can I output to a file?** Support for this is planned after optimization to help remedy the above point.
 - **The app is very slow on my Nano** The model is currently not optimized at all, int8 and fp16 support is the next thing on the TODO list. It should run fine on a Xavier, however.

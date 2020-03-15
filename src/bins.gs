@@ -2,8 +2,8 @@
  *
  * Copyright 2020 Michael de Gans
  *
- * Hail Satan
- *
+ * Hail Satan 
+ * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -61,7 +61,8 @@ namespace NValhalla.Bins
 	 *
 	 * * has static ghost pads and can be linked with {@link Gst.Element.link}.
 	 * * expects a nvstreammux before and some kind of sink after.
-	 * * It's string approximation would be "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
+	 * * It's string approximation would be:
+	 * "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
 	 */
 	class Redactor:Gst.Bin
 
@@ -96,8 +97,9 @@ namespace NValhalla.Bins
 		/**
 		 * ''get'' the {@link pie} ''batch-size''
 		 *
-		 * ''set'' the {@link pie} ''batch-size'' and ''model-engine-file'' property, 
-		 * and ''set'' the {@link tiler} ''rows'' and ''columns'' to their ideal values.
+		 * ''set'' the {@link pie} ''batch-size'' and ''model-engine-file'' 
+		 * property, and ''set'' the {@link tiler} ''rows'' and ''columns''
+		 * to their ideal values.
 		 *
 		 * Usually this should be set to the number of sources.
 		 */
@@ -188,8 +190,8 @@ namespace NValhalla.Bins
 			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_redact)
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
-			// the same hierarchy in order to be linked (can't an pad inside one bin to
-			// an pad outside, or in another bin)
+			// the same hierarchy in order to be linked (can't an pad inside one
+			// bin to an pad outside, or in another bin)
 			// TODO(mdegans): refactor, perhaps move some of this to a superclass
 			pie_sink_pad:Gst.Pad? = self.pie.get_static_pad("sink")
 			if pie_sink_pad == null
@@ -213,8 +215,12 @@ namespace NValhalla.Bins
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
 		/**
-		 * Copy reqiured models into user model path if they don't already exist. This is necessary becuase 
-		 * no matter what, nvinfer will try to write to the model path, and will follow symlinks.
+		 * Copy reqiured models into user model path if they don't already exist.
+		 * This is necessary becuase no matter what, nvinfer will try to write 
+		 * to the model path, and will follow symlinks.
+		 * 
+		 * NOTE(mdegans): actually, it won't load from this path either, so
+		 * patching nvinfer may be necessary no matter what (see issue #4)
 		 *
 		 * @return a dict (libgee's HashMap) of string,string with the model-file, proto-file, and label-file
 		 * @throws Error on failure to copy config file or create a path
@@ -243,7 +249,8 @@ namespace NValhalla.Bins
 		 *
 		 * run ensure_config, run ensure_model_dir, and run ensure_models
 		 *
-		 * @return a dict (libgee's HashMap) of string,string containing parameters for the primary inference engine
+		 * @return a dict (libgee's HashMap) of string,string containing 
+		 * parameters for the primary inference engine
 		 * @throws Error on failure to copy config file or create a path
 		 */
 		def static setup():dict of string,string raises Error
@@ -258,6 +265,8 @@ namespace NValhalla.Bins
 			conf["config-file-path"] = config_dest
 			return conf
 
+		// TODO(mdegans): make this into a library and proper plugin for 
+		// gstreamer
 		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
 		// __init__ in Python (that's "construct")
 		// https://stackoverflow.com/questions/34706079/class-construct-for-genie
@@ -389,16 +398,16 @@ namespace NValhalla.Bins
 
 			//  Element.link_many() exists unlike Python, which is missing it for
 			//  unknown reasons that are probbably good ones
-			if not self.converter.link_many( \
+			if not self.queue.link_many( \
+					self.converter, \
 					self.capsfilter, \
 					self.encoder, \
 					self.pay, \
-					self.queue, \
 					self.udpsink)  // trailing comma is not allowed in Genie :(
 				error(@"$(self.name) could not link elements together")
 			
 			// ghost the sink rce pad to the outside of the bin
-			inner_pad:Gst.Pad = self.converter.get_static_pad("sink")
+			inner_pad:Gst.Pad = self.queue.get_static_pad("sink")
 			sink_pad:Gst.GhostPad = new Gst.GhostPad.from_template("sink", inner_pad, inner_pad.padtemplate)
 			if sink_pad == null
 				error(@"$(self.name) could not create ghost sink pad from $(self.converter.name)")
