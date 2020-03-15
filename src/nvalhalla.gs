@@ -87,7 +87,7 @@ namespace NValhalla
 		 * command line options for {@link GLib.OptionContext} 
 		 */
 		const options: array of OptionEntry = {
-			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, \ "URI for uridecodebin", "URIS..."},
+			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, "URI for uridecodebin", "URIS..."},
 			{"sink", 0, 0, OptionArg.STRING, ref sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
 			{null}
 		}
