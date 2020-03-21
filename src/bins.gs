@@ -1,8 +1,6 @@
 /* bins.gs
  *
  * Copyright 2020 Michael de Gans
- *
- * Hail Satan (this is for good luck since the Old Ones have failed me)
  * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
