@@ -30,7 +30,7 @@
 namespace NValhalla.Validate
 
 	/**
-	 * Validate a supplied sink type. Log to the WARNING level if invalid.
+	 * Validate a sink type. Log to the WARNING level if invalid.
 	 * 
 	 * @return `true` on valid sink type, else `false`
 	 */

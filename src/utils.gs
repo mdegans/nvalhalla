@@ -55,17 +55,21 @@ namespace NValhalla.Utils
 			raise new GLib.FileError.FAILED( \
 				@"could not create dir(s) at $dir");
 
-	// TODO(mdegans): a full GObject is possibly unnecessary here. find an
-	// alternative
 	/**
 	 * A signal handler class for {@link NValhalla.App}.
-	 * 
+	 *
+	 * Copied from here, ownership of code is by author:
+	 * https://mail.gnome.org/archives/vala-list/2017-August/msg00007.html
+	 *
 	 * Pass a {@link Nvalhalla.App} to the constructor and it will call 
 	 * {@link NValhalla.App.quit} on SIGINT.
 	 */
 	class SignalHandler: Object
 		_app:NValhalla.App
-		_id:uint
+		/**
+		 * The id of signal handler returned by {@link GLib.Unix.signal_add}
+		 */
+		prop readonly id:uint
 
 		/**
 		 * Create a new instance of {@link NValhalla.Utils.SignalHandler].
@@ -80,3 +84,6 @@ namespace NValhalla.Utils
 			print(@"Process $((int)Posix.getpid()) has received SIGINT, ending...")
 			self._app.quit()
 			return Source.REMOVE
+
+		def remove():bool
+			return GLib.Source.remove(self._id)
