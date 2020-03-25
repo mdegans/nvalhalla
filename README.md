@@ -6,10 +6,12 @@ Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4
 
 ## Requirements
 
-- hardware: A Tegra device (tested on Jetson Nano and Jetson Xavier). X86/NVIDIA with DeepStream installed *may* work, however this configuration has not been tested.
+- hardware: An NVIDIA device capable of running DeepStream (tested on Jetson Nano, Jetson Xavier, and x86-64 NVIDIA Docker).
 - software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-4.0 valac meson`
 
 ## Installation
+
+(see below for Docker instructions)
 
 ```shell
 git clone https://github.com/mdegans/nvalhalla.git
@@ -23,7 +25,25 @@ sudo ninja install
 
 (this installs to `/usr/local` prefix, same as make)
 
-`sudo ninja uninstall` can be used to uninstall
+`sudo ninja uninstall` can be used to uninstall if you keep the build directory around.
+
+## Running in Docker
+
+Example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
+```
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
+```
+
+(then access rtsp://hostname:8554/nvalhalla from an rtsp client like VLC or gst-play-1.0)
+
+Notes:
+- So far this is only tested on x86-64 NVIDIA Docker. The Dockerfile or meson.build may need to be modified for Tegra Docker support.
+- The Image is fat AF, but that's because the base image is as well. It should pull quick if you already have the base images.
+- The entrypoint defaults to --rtsp sink. Using a graphical sink in Docker is not recommended.
+- Interactive login is disabled, but there are probabaly ways around this if you're clever.
+- The image runs as a limited user.
+- .dot files and the rest are stored in /var/nvalhalla/.nvalhalla/...
+- verbose logging is on by default
 
 ## Examples
 
