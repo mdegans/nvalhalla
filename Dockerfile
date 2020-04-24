@@ -37,6 +37,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     meson \
     valac
 
+ARG NVALHALLA_VERSION="UNDEFINED use build.sh to build"
+
 # drop caps and run nvalhalla using the rtsp sink
 USER nvalhalla:nvalhalla
 ENV G_MESSAGES_DEBUG="all"
