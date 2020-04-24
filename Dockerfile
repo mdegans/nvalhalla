@@ -2,7 +2,7 @@ FROM nvcr.io/nvidia/deepstream:4.0.2-19.12-devel
 
 # set up source dir and copy source
 WORKDIR /opt/nvalhalla/source
-COPY meson.build COPYING ./
+COPY meson.build COPYING VERSION ./
 COPY docs ./docs/
 COPY includes ./includes/
 COPY models ./models/
