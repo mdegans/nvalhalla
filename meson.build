@@ -1,5 +1,8 @@
 # todo(mdegans) read the version from the version file
-project('nvalhalla', ['c', 'vala'],        version: '0.1.3',
+project('nvalhalla', ['c', 'vala'],
+  version: run_command(
+    'head', '-n', '1', files('VERSION'),
+  ).stdout().strip(),
   meson_version: '>= 0.40.0',
 )
 
