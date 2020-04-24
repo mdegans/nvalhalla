@@ -1,4 +1,5 @@
-project('nvalhalla', ['c', 'vala'],        version: '0.1.0',
+# todo(mdegans) read the version from the version file
+project('nvalhalla', ['c', 'vala'],        version: '0.1.3',
   meson_version: '>= 0.40.0',
 )
 
