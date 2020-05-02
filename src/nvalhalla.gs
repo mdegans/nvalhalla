@@ -242,26 +242,36 @@ namespace NValhalla
 			// 10 frames of 29.97 fps
 			self._muxer.set_property("batched-push-timeout", 333670)
 
-			// add the sink
-			if args.sink_type == null or args.sink_type == "screen" 
-				debug(@"creating nvoverlay sink")
-				self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
-				self._sink.set_property("qos", false)
-			else if args.sink_type == "rtsp"
-				debug(@"creating a rtsp sink bin for")
-				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
-				print(@"SERVING RTSP ON: $((string)self._sink.uri)")
-			else
-				warning(@"--sink validator is broken. please report.")
-			if self._sink == null or not self._pipeline.add(self._sink)
-				error("could not create or add sink")
-
-			// link everything: (sources are linked to callback by muxer)
 			if not self._muxer.link(self._redact)
 				error("could not mix stream muxer to redaction bin")
-			if not self._redact.link(self._sink)
-				error("could ont link redaction bin to sink")
+
+			// create the sink
+			self._construct_sink(args.sink_type)
+
+			// dump a .dot of the pipeline to file
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
+
+
+		def _construct_sink(sink_type:string)
+			case sink_type
+				when null, "screen"
+					debug("creating nvoverlay sink")
+					self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
+					self._sink.set_property("qos", false)
+				when "rtsp"
+					debug("creating rtsp sink bin")
+					self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
+					print(@"SERVING RTSP ON: $((string)self._sink.uri)")
+				default
+					critical(@"--sink validator is broken. please report.")
+					self.quit()
+			if self._sink == null or not self._pipeline.add(self._sink)
+				critical("could not create or add sink")
+				self.quit()
+			if not self._redact.link(self._sink)
+				critical("could not link redaction bin to sink")
+				self.quit()
+
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
 			// try to link the pads, check return, and warn if not OK and dump 
@@ -325,7 +335,8 @@ namespace NValhalla
 					message.parse_error(out err, out debug)
 					if err.code == 3  // window closed
 						self.quit()
-					error(@"$(err.code):$(err.message):$(debug)")
+					critical(@"$(err.code):$(err.message):$(debug)")
+					self.quit()
 				when Gst.MessageType.WARNING
 					err:GLib.Error
 					debug:string
