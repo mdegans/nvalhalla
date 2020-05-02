@@ -36,6 +36,7 @@ namespace NValhalla
 	 * namespace object returned by argparse. Validates properties on set.
 	 */
 	class Args: Object
+		[CCode (array_length = false, array_null_terminated = true)]
 		_uris:array of string
 		_sink_type:string?
 
