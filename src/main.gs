@@ -42,6 +42,11 @@ init
 	// create the app instance
 	var app = new NValhalla.App(parsed_args, null)
 	// attach a signal handler that will call quit() on the app
+	// valac compplains that `handler` isn't used but it's wrong.
+	// TODO(mdegans): rethink design so valac shuts up.
+	//  Handler as a function instead, or a .register(app) method?
+	//  There is no way to suppress warnings with valac since it's assumed
+	//  the compiler is always right, and it probably is.
 	var handler = new NValhalla.Utils.SignalHandler(app)
 	// run the app
 	app.run()
