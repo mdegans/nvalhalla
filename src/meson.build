@@ -4,7 +4,6 @@ nvalhalla_sources = files(
   'redactor.gs',
   'rtspserversink.gs',
   'cb_buffer.c',
-  'main.gs',
   'nvalhalla.gs',
   'setup.gs',
   'utils.gs',
@@ -32,7 +31,7 @@ nvalhalla_deps = [
   cc.find_library('nvdsgst_meta', dirs: ds_libdir),
 ]
 
-executable('nvalhalla', nvalhalla_sources,
+executable('nvalhalla', 'main.gs', nvalhalla_sources,
   vala_args: [
     '--header=nvalhalla.h',
     '--vapi=nvalhalla.vapi',
