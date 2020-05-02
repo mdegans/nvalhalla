@@ -307,15 +307,9 @@ namespace NValhalla
 
 
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
-			// note: in Genie there is no fallthrough in a case block unless a
-			// 'when' is empty, so no need to break (unless you want)
+			// note: in Genie there is no fallthrough
 			case message.type
-				when Gst.MessageType.QOS
-				when Gst.MessageType.BUFFERING
-				when Gst.MessageType.LATENCY
-				when Gst.MessageType.ASYNC_DONE
-				when Gst.MessageType.TAG
-					break
+				when Gst.MessageType.QOS, Gst.MessageType.BUFFERING, Gst.MessageType.LATENCY, Gst.MessageType.ASYNC_DONE, Gst.MessageType.TAG
 				when Gst.MessageType.EOS
 					GLib.message("Got EOS")
 					self.quit()
