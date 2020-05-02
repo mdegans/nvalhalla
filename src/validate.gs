@@ -27,6 +27,8 @@
  * authorization.
  */
 
+[indent = 0]
+
 namespace NValhalla.Validate
 
 	/**
