@@ -37,10 +37,13 @@ namespace NValhalla.Validate
 	 * @return `true` on valid sink type, else `false`
 	 */
 	def sink_type(type:string?): bool
-		if type != null and type != "screen" and type != "rtsp"
-			warning(@"'$type' is not a valid --sink: must be 'screen' or 'rtsp'")
-			return false
-		return true
+		case type
+			when null, "screen", "rtsp", "webrtc"
+				return true
+			default
+				warning(@"'$type' is not a valid --sink: must be 'screen' or 'rtsp'")
+				return false
+
 
 	/**
 	 * Validate a uri. Log to the WARNING level if invalid.
