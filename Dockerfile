@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-setuptools \
     valac \
     && pip3 install meson \
-    && cp -R /root/deepstream_sdk_v4.0.2_x86_64/sources/ /opt/nvidia/deepstream/deepstream-4.0/ \
+    && chmod -R o-w /opt/nvidia/deepstream/deepstream/samples /opt/nvidia/deepstream/deepstream/sources \
     && useradd -md /var/nvalhalla -rUs /bin/false nvalhalla \
     && mkdir build \
     && cd build \
