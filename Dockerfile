@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/deepstream:4.0.2-19.12-devel
+FROM nvcr.io/nvidia/deepstream:5.0-dp-20.04-devel
 
 # set up source dir and copy source
 WORKDIR /opt/nvalhalla/source
