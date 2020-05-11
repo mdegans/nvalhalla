@@ -111,7 +111,9 @@ namespace NValhalla.Bins
 				try
 					dest_dir:string = NValhalla.Setup.model_dir()
 					// TODO(mdegans): dynamically set precision
-					basename:string = @"redaction_b$(value)_fp32.engine"
+					gpu_id:int = 0;
+					self.pie.get("gpu-id", ref gpu_id)
+					basename:string = @"redaction_b$(value)_gpu$(gpu_id)_fp32.engine"
 					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
 				except err:FileError
 					warning(@"could not set model-engine-file on pie because: $(err.message)")
