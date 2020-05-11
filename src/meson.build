@@ -13,8 +13,8 @@ nvalhalla_sources = files(
 includes = include_directories('../includes')
 
 # a .pc would be nice in the next release of DeepStream, if you're reading, Nvidia.
-ds_includes = include_directories('/opt/nvidia/deepstream/deepstream-4.0/sources/includes')
-ds_libdir = '/opt/nvidia/deepstream/deepstream-4.0/lib'
+ds_includes = include_directories('/opt/nvidia/deepstream/deepstream-5.0/sources/includes')
+ds_libdir = '/opt/nvidia/deepstream/deepstream-5.0/lib'
 
 nvalhalla_deps = [
   dependency('gee-0.8'),
