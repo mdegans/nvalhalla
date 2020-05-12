@@ -1,4 +1,4 @@
-/* validate.gs
+/* test_validate.gs
  *
  * Copyright 2020 Michael de Gans
  *
@@ -29,31 +29,37 @@
 
 [indent = 0]
 
-namespace NValhalla.Validate
+def test_sink_type()
+	good:array of string = {
+		"screen", "rtsp", "webrtc"
+	}
+	bad:array of string = {
+		"potato"
+	}
+	if not NValhalla.Validate.sink_type(null)
+		error("NULL should be a valid sink type but sink_type() returned false")
+	for s in good
+		if not NValhalla.Validate.sink_type(s)
+			error(@"$s should be a valid sink type but sink_type() returned false")
+	for s in bad
+		if NValhalla.Validate.sink_type(s)
+			error(@"$s validated as a sink type but shouldn't have")
 
-	/**
-	 * Validate a sink type. Log to the WARNING level if invalid.
-	 * 
-	 * @return `true` on valid sink type, else `false`
-	 */
-	def sink_type(type:string?): bool
-		ret:bool
-		case type
-			when null, "screen", "rtsp", "webrtc"
-				ret = true
-			default
-				warning(@"'$type' is not a valid --sink: must be 'screen' or 'rtsp'")
-				ret = false
-		return ret
+def test_uri()
+	good:array of string = {
+		"https://www.google.com/",
+		"rtsp://192.168.1.123/somepath"
+	}
+	bad:array of string = {
+		"potato potahtoe"
+	}
+	for u in good
+		if not NValhalla.Validate.uri(u)
+			error(@"'$u' is a valid uri but uri() returned false")
+	for u in bad
+		if NValhalla.Validate.uri(u)
+			error(@"'$u' validated as a uri but shouldn't have")
 
-
-	/**
-	 * Validate a uri. Log to the WARNING level if invalid.
-	 *
-	 * @return `true` on valid uri, else `false`
-	 */
-	def uri(val:string):bool
-		if GLib.Uri.parse_scheme(val) == null
-			warning(@"$val is not a valid uri")
-			return false
-		return true
+init
+	test_sink_type()
+	test_uri()

@@ -36,6 +36,7 @@ namespace NValhalla
 	 * namespace object returned by argparse. Validates properties on set.
 	 */
 	class Args: Object
+		[CCode (array_length = false, array_null_terminated = true)]
 		_uris:array of string
 		_sink_type:string?
 
@@ -241,26 +242,36 @@ namespace NValhalla
 			// 10 frames of 29.97 fps
 			self._muxer.set_property("batched-push-timeout", 333670)
 
-			// add the sink
-			if args.sink_type == null or args.sink_type == "screen" 
-				debug(@"creating nvoverlay sink")
-				self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
-				self._sink.set_property("qos", false)
-			else if args.sink_type == "rtsp"
-				debug(@"creating a rtsp sink bin for")
-				self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
-				print(@"SERVING RTSP ON: $((string)self._sink.uri)")
-			else
-				warning(@"--sink validator is broken. please report.")
-			if self._sink == null or not self._pipeline.add(self._sink)
-				error("could not create or add sink")
-
-			// link everything: (sources are linked to callback by muxer)
 			if not self._muxer.link(self._redact)
 				error("could not mix stream muxer to redaction bin")
-			if not self._redact.link(self._sink)
-				error("could ont link redaction bin to sink")
+
+			// create the sink
+			self._construct_sink(args.sink_type)
+
+			// dump a .dot of the pipeline to file
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self._pipeline, Gst.DebugGraphDetails.ALL, @"$(self._pipeline.name).construct_end")
+
+
+		def _construct_sink(sink_type:string)
+			case sink_type
+				when null, "screen"
+					debug("creating nvoverlay sink")
+					self._sink = Gst.ElementFactory.make("nvoverlaysink", "sink")
+					self._sink.set_property("qos", false)
+				when "rtsp"
+					debug("creating rtsp sink bin")
+					self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
+					print(@"SERVING RTSP ON: $((string)self._sink.uri)")
+				default
+					critical(@"--sink validator is broken. please report.")
+					self.quit()
+			if self._sink == null or not self._pipeline.add(self._sink)
+				critical("could not create or add sink")
+				self.quit()
+			if not self._redact.link(self._sink)
+				critical("could not link redaction bin to sink")
+				self.quit()
+
 
 		def _try_linking(src_pad:Gst.Pad, sink_pad:Gst.Pad)
 			// try to link the pads, check return, and warn if not OK and dump 
@@ -307,15 +318,9 @@ namespace NValhalla
 
 
 		def _on_message(bus: Gst.Bus, message: Gst.Message) : bool
-			// note: in Genie there is no fallthrough in a case block unless a
-			// 'when' is empty, so no need to break (unless you want)
+			// note: in Genie there is no fallthrough
 			case message.type
-				when Gst.MessageType.QOS
-				when Gst.MessageType.BUFFERING
-				when Gst.MessageType.LATENCY
-				when Gst.MessageType.ASYNC_DONE
-				when Gst.MessageType.TAG
-					break
+				when Gst.MessageType.QOS, Gst.MessageType.BUFFERING, Gst.MessageType.LATENCY, Gst.MessageType.ASYNC_DONE, Gst.MessageType.TAG
 				when Gst.MessageType.EOS
 					GLib.message("Got EOS")
 					self.quit()
@@ -330,7 +335,8 @@ namespace NValhalla
 					message.parse_error(out err, out debug)
 					if err.code == 3  // window closed
 						self.quit()
-					error(@"$(err.code):$(err.message):$(debug)")
+					critical(@"$(err.code):$(err.message):$(debug)")
+					self.quit()
 				when Gst.MessageType.WARNING
 					err:GLib.Error
 					debug:string

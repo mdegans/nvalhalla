@@ -1,9 +1,9 @@
 cc = meson.get_compiler('c')
 
 nvalhalla_sources = files(
-  'bins.gs',
+  'redactor.gs',
+  'rtspserversink.gs',
   'cb_buffer.c',
-  'main.gs',
   'nvalhalla.gs',
   'setup.gs',
   'utils.gs',
@@ -13,8 +13,8 @@ nvalhalla_sources = files(
 includes = include_directories('../includes')
 
 # a .pc would be nice in the next release of DeepStream, if you're reading, Nvidia.
-ds_includes = include_directories('/opt/nvidia/deepstream/deepstream-4.0/sources/includes')
-ds_libdir = '/opt/nvidia/deepstream/deepstream-4.0/lib'
+ds_includes = include_directories('/opt/nvidia/deepstream/deepstream-5.0/sources/includes')
+ds_libdir = '/opt/nvidia/deepstream/deepstream-5.0/lib'
 
 nvalhalla_deps = [
   dependency('gee-0.8'),
@@ -31,7 +31,7 @@ nvalhalla_deps = [
   cc.find_library('nvdsgst_meta', dirs: ds_libdir),
 ]
 
-executable('nvalhalla', nvalhalla_sources,
+executable('nvalhalla', 'main.gs', nvalhalla_sources,
   vala_args: [
     '--header=nvalhalla.h',
     '--vapi=nvalhalla.vapi',
