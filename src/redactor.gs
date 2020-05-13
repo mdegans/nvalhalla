@@ -73,6 +73,9 @@ namespace NValhalla.Bins
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
 
+		/** tracker element to avoid repeated inferences */
+		tracker:dynamic Gst.Element
+
 		/** nvmultistreamtiler to tile the multiple streams */
 		tiler:dynamic Gst.Element
 
@@ -162,6 +165,13 @@ namespace NValhalla.Bins
 			for var entry in _config.entries
 				self.pie.set_property(entry.key, entry.value)
 
+			// set up the tracker element
+			self.tracker = Gst.ElementFactory.make("nvtracker", "tracker")
+			if self.tracker == null or not self.add(self.tracker)
+				error("could not create or add tracker element")
+			self.tracker.set_property("ll-lib-file", "libnvds_mot_iou.so")
+			self.tracker.set_property("enable-batch-process", true)
+
 			// set up the multi-stream tiler
 			self.tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
 			if self.tiler == null or not self.add(self.tiler)
@@ -180,8 +190,8 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.tiler, self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
+			if not self.pie.link_many(self.tracker, self.tiler, self.osdconv, self.osd)
+				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
 
 			// connect the buffer callback to the sink pad
 			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
