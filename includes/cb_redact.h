@@ -1,5 +1,5 @@
-#ifndef __BUFFER_CB_H__
-#define __BUFFER_CB_H__
+#ifndef CB_REDACT_H__
+#define CB_REDACT_H__
 
 #include <gst/gst.h>
 #include <glib.h>
@@ -19,17 +19,11 @@ G_BEGIN_DECLS  // extern "C" {
  *
  * Returns: a #GstPadProbeReturn of OK on completion
  *
- * Since: 0.10
+ * Since: 0.1.0
  */
 GstPadProbeReturn
 on_buffer_osd_redact (GstPad * pad, GstPadProbeInfo * info);
 
-/**
- * Calculate how dangerous an object is
- */
-GstPadProbeReturn
-on_buffer_osd_distance(GstPad * pad, GstPadProbeInfo * info);
-
 G_END_DECLS // }
 
-#endif
+#endif // CB_REDACT_H__
