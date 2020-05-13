@@ -60,6 +60,9 @@ namespace NValhalla.Bins
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
 
+		/** tracker element to avoid repeated inferences */
+		tracker:dynamic Gst.Element
+
 		/** nvmultistreamtiler to tile the multiple streams */
 		tiler:dynamic Gst.Element
 
@@ -101,7 +104,7 @@ namespace NValhalla.Bins
 					gpu_id:int = 0;
 					self.pie.get("gpu-id", ref gpu_id)
 					basename:string = @"resnet10_b$(value)_gpu$(gpu_id)_fp32.engine"
-					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
+					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, MODEL_SUBDIR, basename)
 				except err:FileError
 					warning(@"could not set model-engine-file on pie because: $(err.message)")
 				// calculate the number of columns and rows required:
@@ -148,6 +151,14 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvinfer element")
 			for var entry in _config.entries
 				self.pie.set_property(entry.key, entry.value)
+			self.pie.interval = 1
+
+			// set up the tracker element
+			self.tracker = Gst.ElementFactory.make("nvtracker", "tracker")
+			if self.tracker == null or not self.add(self.tracker)
+				error("could not create or add tracker element")
+			self.tracker.set_property("ll-lib-file", "libnvds_mot_iou.so")
+			self.tracker.set_property("enable-batch-process", true)
 
 			// set up the multi-stream tiler
 			self.tiler = Gst.ElementFactory.make("nvmultistreamtiler", "tiler")
@@ -167,8 +178,8 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.tiler, self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
+			if not self.pie.link_many(self.tracker, self.tiler, self.osdconv, self.osd)
+				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
 
 			// connect the buffer callback to the sink pad
 			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
