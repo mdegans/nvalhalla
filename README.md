@@ -1,13 +1,17 @@
 # NValhalla
 
-Is a simple DeepStream test app to perform live redaction an an arbitrary number of sources. NValhalla is written in [Genie, a Vala dialect](https://wiki.gnome.org/Projects/Genie).
+Is a simple DeepStream test app to perform live redaction and social distancing an an arbitrary number of sources. NValhalla is written in [Genie, a Vala dialect](https://wiki.gnome.org/Projects/Genie).
 
 Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4 ...` where each --uri supplied is a valid uri accepted by [uridecodebin](https://gstreamer.freedesktop.org/documentation/playback/uridecodebin.html?gi-language=c). Full help, including --gst options are available with --help
+
+Distancing mode can be enabled by adding `--kenneth` as a flag. Guaranteed to [blow the Covid away](https://www.youtube.com/watch?v=uY6INyOaLGs). Distancing mode uses an int8 quantized model packaged with DeepStream, so performance should be much better than the redaction mode.
 
 ## Requirements
 
 - hardware: An NVIDIA device capable of running DeepStream (tested on Jetson Nano, Jetson Xavier, and x86-64 NVIDIA Docker).
 - software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-5.0 valac meson`
+
+note: if running with Docker, the software listed above does not need to be installed. Also, if installing on x86-64, deepstream-5.0 must be [download and installed manually](https://developer.nvidia.com/deepstream-sdk) as it is not in Nvidia's apt repositories.
 
 ## Installation
 
