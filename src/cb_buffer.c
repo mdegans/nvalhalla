@@ -26,6 +26,10 @@
 
 #include "cb_buffer.h"
 
+#include <math.h>
+
+const int PERSON_CLASS_ID=2;
+
 GstPadProbeReturn
 on_buffer_osd_redact (GstPad * pad, GstPadProbeInfo * info)
 {
@@ -78,4 +82,117 @@ on_buffer_osd_redact (GstPad * pad, GstPadProbeInfo * info)
     }
   }
   return GST_PAD_PROBE_OK;
+}
+
+
+static float
+calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance);
+
+GstPadProbeReturn
+on_buffer_osd_distance(GstPad * pad, GstPadProbeInfo * info)
+{
+  float how_dangerous=0.0;
+
+  GstBuffer* buf = (GstBuffer*) info->data;
+  NvDsObjectMeta* obj_meta = NULL;
+  NvDsMetaList*  l_frame = NULL;
+  NvDsMetaList* l_obj = NULL;
+  NvDsBatchMeta* batch_meta = gst_buffer_get_nvds_batch_meta (buf);
+
+  NvOSD_RectParams* rect_params;
+  // NvOSD_TextParams* text_params;
+
+  for (l_frame = batch_meta->frame_meta_list; l_frame != NULL;
+      l_frame = l_frame->next) {
+
+    NvDsFrameMeta *frame_meta = (NvDsFrameMeta *) (l_frame->data);
+
+    if (frame_meta == NULL) {
+      GST_WARNING("NvDS Meta contained NULL meta");
+      return GST_PAD_PROBE_OK;
+    }
+
+    // for obj_meta in obj_meta_list
+    for (l_obj = frame_meta->obj_meta_list; l_obj != NULL;
+         l_obj = l_obj->next) {
+      obj_meta = (NvDsObjectMeta *) (l_obj->data);
+      // skip the object, if it's not a person
+      if (obj_meta->class_id != PERSON_CLASS_ID) {
+        continue;
+      }
+
+      rect_params = &(obj_meta->rect_params);
+      // text_params = &(obj_meta->text_params);
+
+      // get how dangerous the object is as a float
+      how_dangerous = calculate_how_dangerous(l_obj, rect_params->height);
+
+      // make the box opaque and red depending on the danger
+      rect_params->border_width = 0;
+      rect_params->has_bg_color = 1;
+      rect_params->bg_color.red = how_dangerous * 0.6 + 0.2;
+      rect_params->bg_color.green = 0.2;
+      rect_params->bg_color.blue = 0.2;
+      rect_params->bg_color.alpha = how_dangerous * 0.8 + 0.2;
+    }
+  }
+  return GST_PAD_PROBE_OK;
+}
+
+/**
+ * Calculate distance between the center of the bottom edge of two rectangles
+ */
+static float
+distance_between(NvOSD_RectParams* a, NvOSD_RectParams* b) {
+  // use the middle of the feet as a center point.
+  int ax = a->left + a->width / 2;
+  int ay = a->top + a->height;
+  int bx = b->left + b->width / 2;
+  int by = b->top + b->height;
+
+  int dx = ax - bx;
+  int dy = ay - by;
+
+  return sqrtf((float)(dx * dx + dy * dy));
+}
+
+static float
+calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance) {
+  NvDsObjectMeta* current = (NvDsObjectMeta *) (l_obj->data);
+  NvDsObjectMeta* other;
+
+  // sum of all normalized violation distances
+  float how_dangerous = 0.0;  
+
+  float d; // distance temp (in pixels)
+
+  // iterate forwards from current element
+  for (NvDsMetaList* f_iter = l_obj->next; f_iter != NULL; f_iter = f_iter->next) {
+    other = (NvDsObjectMeta *) (f_iter->data);
+    if (other->class_id != PERSON_CLASS_ID) {
+        continue;
+    }
+    d = danger_distance - distance_between(&(current->rect_params), &(other->rect_params));
+    if (d < 0.0) {
+      d = 0.0;
+    } else {
+      how_dangerous += d / danger_distance;
+    }
+  }
+
+  // iterate in reverse from current element
+  for (NvDsMetaList* r_iter = l_obj->prev; r_iter != NULL; r_iter = r_iter->prev) {
+    other = (NvDsObjectMeta *) (r_iter->data);
+    if (other->class_id != PERSON_CLASS_ID) {
+        continue;
+    }
+    d = danger_distance - distance_between(&(current->rect_params), &(other->rect_params));
+    if (d < 0.0) {
+      d = 0.0;
+    } else {
+      how_dangerous += d / danger_distance;
+    }
+  }
+
+  return how_dangerous;
 }

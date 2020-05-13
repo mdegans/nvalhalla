@@ -39,7 +39,7 @@ namespace NValhalla
 		[CCode (array_length = false, array_null_terminated = true)]
 		_uris:array of string
 		_sink_type:string?
-
+		kenneth:bool?
 		/**
 		 * array of validated URIs
 		 */
@@ -62,9 +62,10 @@ namespace NValhalla
 				if NValhalla.Validate.sink_type(value)
 					self._sink_type = value
 
-		construct(uris:array of string, sink_type:string?)
+		construct(uris:array of string, sink_type:string?, kenneth:bool?)
 			self.uris = uris
 			self.sink_type = sink_type
+			self.kenneth = kenneth
 
 	/**
 	 * An argument parser class for NValhalla a la argparse. Also initializes 
@@ -81,11 +82,16 @@ namespace NValhalla
 		 */
 		sink_type:static string?
 		/**
-		 * command line options for {@link GLib.OptionContext} 
+		 * Blows the Covid away (distancing mode)
 		 */
+		kenneth:static bool = false
+		/**
+		 * command line options for {@link GLib.OptionContext} 
+		 */	
 		const options: array of OptionEntry = {
 			{"uri", 0, 0, OptionArg.STRING_ARRAY, ref uris, "URI for uridecodebin", "URIS..."},
 			{"sink", 0, 0, OptionArg.STRING, ref sink_type, "sink type ('screen' or 'rtsp' default 'screen')", "SINK"},
+			{"kenneth", 0, 0, OptionArg.NONE, ref kenneth, "blows the Covid away (distancing mode)", null},
 			{null}
 		}
 		/**
@@ -117,7 +123,7 @@ namespace NValhalla
 				// add the option group from gstreame
 				opt_context.add_group(Gst.init_get_option_group())
 				opt_context.parse(ref args)
-				ret = new Args(uris, sink_type)
+				ret = new Args(uris, sink_type, kenneth)
 			except err:OptionError
 				error(@"parsing failed because: $(err.message)")
 			return ret
@@ -145,7 +151,7 @@ namespace NValhalla
 		// plain old elements
 		_muxer:Gst.Element
 		_muxer_link_lock:GLib.Mutex
-		_redact:NValhalla.Bins.Redactor
+		_inference:Gst.Bin
 		_sink:dynamic Gst.Element
 
 		/**
@@ -223,12 +229,15 @@ namespace NValhalla
 			if self._sources.size == 0
 				error("no sources could be created")
 
-			// create a new redactor bin and set the batch size for the nvinfer
+			// create a new inference bin and set the batch size for the nvinfer
 			// element
-			self._redact = new NValhalla.Bins.Redactor("redact")
-			if self._redact == null or not self._pipeline.add(self._redact)
-				error("failed to create or add Redactor bin")
-			self._redact.set_property("batch-size", self._sources.size)
+			if args.kenneth
+				self._inference = new NValhalla.Bins.Distancing("distancing")
+			else
+				self._inference = new NValhalla.Bins.Redactor("redact")
+			if self._inference == null or not self._pipeline.add(self._inference)
+				error("failed to create or add Inference bin")
+			self._inference.set_property("batch-size", self._sources.size)
 
 			// calculate the number of columns and rows required:
 			rows_and_columns:int = (int) Math.ceilf(Math.sqrtf((float) self._sources.size))
@@ -242,8 +251,8 @@ namespace NValhalla
 			// 10 frames of 29.97 fps
 			self._muxer.set_property("batched-push-timeout", 333670)
 
-			if not self._muxer.link(self._redact)
-				error("could not mix stream muxer to redaction bin")
+			if not self._muxer.link(self._inference)
+				error("could not mix stream muxer to inference bin")
 
 			// create the sink
 			self._construct_sink(args.sink_type)
@@ -268,8 +277,8 @@ namespace NValhalla
 			if self._sink == null or not self._pipeline.add(self._sink)
 				critical("could not create or add sink")
 				self.quit()
-			if not self._redact.link(self._sink)
-				critical("could not link redaction bin to sink")
+			if not self._inference.link(self._sink)
+				critical("could not link inference bin to sink")
 				self.quit()
 
 

@@ -24,6 +24,12 @@ G_BEGIN_DECLS  // extern "C" {
 GstPadProbeReturn
 on_buffer_osd_redact (GstPad * pad, GstPadProbeInfo * info);
 
+/**
+ * Calculate how dangerous an object is
+ */
+GstPadProbeReturn
+on_buffer_osd_distance(GstPad * pad, GstPadProbeInfo * info);
+
 G_END_DECLS // }
 
 #endif

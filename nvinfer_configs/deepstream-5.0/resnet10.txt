@@ -1,0 +1,1 @@
+/opt/nvidia/deepstream/deepstream/samples/configs/deepstream-app/config_infer_primary.txt
