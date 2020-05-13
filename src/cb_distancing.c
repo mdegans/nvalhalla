@@ -40,7 +40,8 @@ calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance);
 GstPadProbeReturn
 on_buffer_osd_distance(GstPad * pad, GstPadProbeInfo * info)
 {
-  float how_dangerous=0.0;
+  float how_dangerous=0.0f;
+  float color_val=0.0f;
 
   GstBuffer* buf = (GstBuffer*) info->data;
   NvDsObjectMeta* obj_meta = NULL;
@@ -77,12 +78,16 @@ on_buffer_osd_distance(GstPad * pad, GstPadProbeInfo * info)
       how_dangerous = calculate_how_dangerous(l_obj, rect_params->height);
 
       // make the box opaque and red depending on the danger
+
+      color_val = (how_dangerous * 0.6f);
+      color_val = color_val < 0.6f ? color_val : 0.6f;
+
       rect_params->border_width = 0;
       rect_params->has_bg_color = 1;
-      rect_params->bg_color.red = how_dangerous * 0.6 + 0.2;
-      rect_params->bg_color.green = 0.2;
-      rect_params->bg_color.blue = 0.2;
-      rect_params->bg_color.alpha = how_dangerous * 0.8 + 0.2;
+      rect_params->bg_color.red = color_val + 0.2f;
+      rect_params->bg_color.green = 0.2f;
+      rect_params->bg_color.blue = 0.2f;
+      rect_params->bg_color.alpha = color_val + 0.2f;
     }
   }
   return GST_PAD_PROBE_OK;
@@ -111,7 +116,7 @@ calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance) {
   NvDsObjectMeta* other;
 
   // sum of all normalized violation distances
-  float how_dangerous = 0.0;  
+  float how_dangerous = 0.0f;  
 
   float d; // distance temp (in pixels)
 
@@ -122,9 +127,7 @@ calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance) {
         continue;
     }
     d = danger_distance - distance_between(&(current->rect_params), &(other->rect_params));
-    if (d < 0.0) {
-      d = 0.0;
-    } else {
+    if (d > 0.0) {
       how_dangerous += d / danger_distance;
     }
   }
@@ -136,9 +139,7 @@ calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance) {
         continue;
     }
     d = danger_distance - distance_between(&(current->rect_params), &(other->rect_params));
-    if (d < 0.0) {
-      d = 0.0;
-    } else {
+    if (d > 0.0f) {
       how_dangerous += d / danger_distance;
     }
   }
