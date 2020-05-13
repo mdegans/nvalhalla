@@ -2,8 +2,10 @@ cc = meson.get_compiler('c')
 
 nvalhalla_sources = files(
   'redactor.gs',
+  'distancing.gs',
   'rtspserversink.gs',
-  'cb_buffer.c',
+  'cb_redact.c',
+  'cb_distancing.c',
   'nvalhalla.gs',
   'setup.gs',
   'utils.gs',

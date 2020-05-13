@@ -24,7 +24,7 @@
 
 // TODO(mdegans): write .vapi bindings so reuse is easier.
 
-#include "cb_buffer.h"
+#include "cb_redact.h"
 
 GstPadProbeReturn
 on_buffer_osd_redact (GstPad * pad, GstPadProbeInfo * info)

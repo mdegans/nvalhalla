@@ -1,7 +1,10 @@
-/* bins.gs
+/* distancing.gs
  *
  * Copyright 2020 Michael de Gans
- * 
+ *
+ * 4019dc5f7144321927bab2a4a3a3860a442bc239885797174c4da291d1479784
+ * 5a4a83a5f111f5dbd37187008ad889002bce85c8be381491f8157ba337d9cde7
+ *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -29,31 +32,13 @@
 
 [indent = 0]
 
-//  def static plugin_init(plugin:Gst.Plugin): bool
-//  	Gst.Element.register(plugin, "nvredact", Gst.Rank.NONE, typeof(NValhalla.Bins.Redactor))
-//  	return true
-
-// TODO: mdegans: figure out hwo to fix error: Value must be constant
-//  const gst_plugin_desc:Gst.PluginDesc = Gst.PluginDesc() {
-//  	description = "NValhalla Handy Bins",
-//  	license = "MIT",
-//  	major_version = 0,
-//  	minor_version = 1,
-//  	name = "nvalhalla_bins",
-//  	origin = "SOVNGARDE!",
-//  	package = "nvalhalla",
-//  	plugin_init = (Gst.PluginInitFunc) plugin_init,
-//  	release_datetime = "02/27/2020",
-//  	source = "https://github.com/mdegans/nvalhalla",
-//  	version = "0.1"
-//  }
-
 // buffer callbacks from cb_buffer.h
-def extern on_buffer_osd_redact(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
+def extern on_buffer_osd_distance(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
 
 namespace NValhalla.Bins
 
-	// TODO(mdegans): consider separating redaction and tiling
+	// TODO(mdegans): common base class for Distancing and Redactor
+	// TODO(mdegans): consider separating distancing and tiling
 	/**
 	 * A {@link Gst.Bin} that redacts and tiles multiple video streams. it:
 	 *
@@ -62,14 +47,16 @@ namespace NValhalla.Bins
 	 * * It's string approximation would be:
 	 * "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
 	 */
-	class Redactor:Gst.Bin
+	class Distancing:Gst.Bin
 
-		// constants needed by the redactor
-		const CONFIG_BASENAME:string = "redactor.ini"
-		const MODEL_BASENAME:string = "redactor.caffemodel"
-		const PROTO_BASENAME:string = "redactor.prototxt"
-		const LABEL_BASENAME:string = "redactor_labels.txt"
-
+		// constants needed by the distancing
+		const CONFIG_SUBDIR:string = "deepstream-5.0"
+		const CONFIG_BASENAME:string = "resnet10.txt"
+		const MODEL_SUBDIR:string = "Primary_Detector"
+		const MODEL_BASENAME:string = "resnet10.caffemodel"
+		const PROTO_BASENAME:string = "resnet10.prototxt"
+		const LABEL_BASENAME:string = "labels.txt"
+		const CALIB_BASENAME:string = "cal_trt.bin"
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
 
@@ -116,8 +103,8 @@ namespace NValhalla.Bins
 					// TODO(mdegans): dynamically set precision
 					gpu_id:int = 0;
 					self.pie.get("gpu-id", ref gpu_id)
-					basename:string = @"redaction_b$(value)_gpu$(gpu_id)_fp32.engine"
-					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, basename)
+					basename:string = @"resnet10_b$(value)_gpu$(gpu_id)_fp32.engine"
+					self.pie.model_engine_file = GLib.Path.build_filename(dest_dir, MODEL_SUBDIR, basename)
 				except err:FileError
 					warning(@"could not set model-engine-file on pie because: $(err.message)")
 				// calculate the number of columns and rows required:
@@ -164,6 +151,7 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvinfer element")
 			for var entry in _config.entries
 				self.pie.set_property(entry.key, entry.value)
+			self.pie.interval = 1
 
 			// set up the tracker element
 			self.tracker = Gst.ElementFactory.make("nvtracker", "tracker")
@@ -197,7 +185,7 @@ namespace NValhalla.Bins
 			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
 			if osd_sink_pad == null
 				error(@"$(self.name) failed to get osd sink pad")
-			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_redact)
+			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_distance)
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one
@@ -236,17 +224,21 @@ namespace NValhalla.Bins
 		 * @throws Error on failure to copy config file or create a path
 		 */
 		def static ensure_models():dict of string,string raises Error
-			dest_dir:string = NValhalla.Setup.model_dir()
+			dest_dir:string = GLib.Path.build_filename(NValhalla.Setup.model_dir(), MODEL_SUBDIR)
+			// make the primary detector paths
+			NValhalla.Utils.mkdirs(dest_dir)
 			// set up source paths
 			var sources = new dict of string,string
-			sources["model-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_BASENAME)
-			sources["proto-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, PROTO_BASENAME)
-			sources["labelfile-path"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, LABEL_BASENAME)
+			sources["model-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_SUBDIR, MODEL_BASENAME)
+			sources["proto-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_SUBDIR, PROTO_BASENAME)
+			sources["labelfile-path"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_SUBDIR, LABEL_BASENAME)
+			sources["int8-calib-file"] = GLib.Path.build_filename(NValhalla.Setup.MODEL_DIR, MODEL_SUBDIR, CALIB_BASENAME)
 			// set up dest paths
 			var dests = new dict of string,string
 			dests["model-file"] = GLib.Path.build_filename(dest_dir, MODEL_BASENAME)
 			dests["proto-file"] = GLib.Path.build_filename(dest_dir, PROTO_BASENAME)
 			dests["labelfile-path"] = GLib.Path.build_filename(dest_dir, LABEL_BASENAME)
+			dests["int8-calib-file"] = GLib.Path.build_filename(dest_dir, CALIB_BASENAME)
 			// symlink all sources to destination
 			for var key in sources.keys
 				if GLib.FileUtils.test(dests[key], GLib.FileTest.EXISTS)
@@ -265,44 +257,15 @@ namespace NValhalla.Bins
 		 */
 		def static setup():dict of string,string raises Error
 			ensure_models()
-			config_source:string = GLib.Path.build_filename(NValhalla.Setup.NVINFER_CONFIG_DIR, CONFIG_BASENAME)
-			config_dest:string = GLib.Path.build_filename(NValhalla.Setup.config_dir(), CONFIG_BASENAME)
-			// load the config source
+			config_source:string = GLib.Path.build_filename(NValhalla.Setup.NVINFER_CONFIG_DIR, CONFIG_SUBDIR, CONFIG_BASENAME)
+			config_subdir:string = GLib.Path.build_filename(NValhalla.Setup.config_dir(), CONFIG_SUBDIR)
+			config_dest:string = GLib.Path.build_filename(config_subdir, CONFIG_BASENAME)
+			// ensure the config subdir exists
+			NValhalla.Utils.mkdirs(config_subdir)
+			// copy the config source
 			if not GLib.FileUtils.test(config_dest, GLib.FileTest.EXISTS)
 				NValhalla.Utils.sync_copy_file(config_source, config_dest, null)
 			var conf = new dict of string,string
 			// this may make more sense when "labelfile-path, model-file, and proto-file"
 			conf["config-file-path"] = config_dest
 			return conf
-
-		// TODO(mdegans): make this into a library and proper plugin for 
-		// gstreamer
-		// init is "static construct" in Vala and _class_init() in C, confusingly not at all like not 
-		// __init__ in Python (that's "construct")
-		// https://stackoverflow.com/questions/34706079/class-construct-for-genie
-		// https://gstreamer.freedesktop.org/documentation/plugin-development/basics/boiler.html#element-metadata
-		//  init
-		//  	// so by trial and error, i figured out how to wrap lines. the ; must absolutely be at the end 
-		//  	// or else "syntax error, expected identifier"
-		//  	set_static_metadata(
-		//  		"nvredact",
-		//  		"Filter",
-		//  		"Redacts faces and license plates using nvinfer",
-		//  		"Michael de Gans <michael.john.degans@gmail.com>"
-		//  	);
-		//  	sink_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
-		//  	sink_template.direction = Gst.PadDirection.SINK
-		//  	sink_template.name_template = "sink"
-		//  	sink_template.presence = Gst.PadPresence.ALWAYS
-		//  	sink_template.static_caps = Gst.StaticCaps()
-		//  	sink_template.static_caps.string = "video/x-raw(memory:NVMM)"
-		//  	//  sink_template.static_caps.caps = ???
-		//  	// todo: figure out how to get the actual Gst.Caps
-		//  	add_static_pad_template(sink_template)
-		//  	src_template:Gst.StaticPadTemplate = Gst.StaticPadTemplate()
-		//  	src_template.direction = Gst.PadDirection.SRC
-		//  	src_template.name_template = "src"
-		//  	src_template.presence = Gst.PadPresence.ALWAYS
-		//  	src_template.static_caps = Gst.StaticCaps()
-		//  	src_template.static_caps.string = "video/x-raw(memory:NVMM)"
-		//  	add_static_pad_template(src_template)
