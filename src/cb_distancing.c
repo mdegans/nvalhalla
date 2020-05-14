@@ -116,7 +116,7 @@ calculate_how_dangerous(NvDsMetaList* l_obj, float danger_distance) {
   NvDsObjectMeta* other;
 
   // sum of all normalized violation distances
-  float how_dangerous = 0.0f;  
+  float how_dangerous = 0.0f;
 
   float d; // distance temp (in pixels)
 
