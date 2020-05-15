@@ -1,4 +1,4 @@
-/* setup.gs
+/* webmserversink.gs
  *
  * Copyright 2020 Michael de Gans
  *
