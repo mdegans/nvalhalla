@@ -110,12 +110,12 @@ namespace NValhalla.Bins
 					self.pay, \
 					self.udpsink)  // trailing comma is not allowed in Genie :(
 				error(@"$(self.name) could not link elements together")
-			
+
 			// ghost the sink rce pad to the outside of the bin
 			inner_pad:Gst.Pad = self.queue.get_static_pad("sink")
 			sink_pad:Gst.GhostPad = new Gst.GhostPad.from_template("sink", inner_pad, inner_pad.padtemplate)
 			if sink_pad == null
-				error(@"$(self.name) could not create ghost sink pad from $(self.converter.name)")
+				error(@"$(self.name) could not create ghost sink pad from $(self.queue.name)")
 			if not self.add_pad(sink_pad)
 				error(@"could not add $(sink_pad.name) ghost pad to $(self.name)")
 
