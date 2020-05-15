@@ -39,6 +39,10 @@ namespace NValhalla.Bins
 	/**
 	 * A {@link Gst.Bin} to be used a sink to serve Web-M encoded video
 	 * in a format acceptable to a html5 video tag.
+	 *
+	 * This sink does not work for now, which is why it's option is hiddden.
+	 * on x86 it craps out one way, on Tegra, entirely another. h264 may be
+	 * a better option with this design. The problem seems to be the decoder.
 	 */
 	class WebmServerSink: Gst.Bin
 		const DEFAULT_HOST:string = "0.0.0.0"
