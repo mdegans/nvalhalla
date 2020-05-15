@@ -7,6 +7,7 @@ project('nvalhalla', ['c', 'vala'],
 )
 
 if target_machine.cpu_family() == 'aarch64'
+  message('TEGRA Detected')
   add_project_arguments(
     [
       '--define=TEGRA',
@@ -14,6 +15,17 @@ if target_machine.cpu_family() == 'aarch64'
     language: 'vala'
   )
 endif
+
+if run_command('cat', '/proc/device-tree/nvidia,dtsfilename').stdout().contains('t19x')
+  message('XAVIER/TX2 Detected')
+  add_project_arguments(
+    [
+      '--define=TX2_XAV',
+    ],
+    language: 'vala'
+  )
+endif
+
 
 subdir('src')
 subdir('test')

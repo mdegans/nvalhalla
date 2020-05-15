@@ -31,7 +31,7 @@
 
 def test_sink_type()
 	good:array of string = {
-		"screen", "rtsp", "webrtc"
+		"screen", "rtsp", "webm"
 	}
 	bad:array of string = {
 		"potato"

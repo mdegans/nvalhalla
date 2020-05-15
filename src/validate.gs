@@ -39,7 +39,7 @@ namespace NValhalla.Validate
 	def sink_type(type:string?): bool
 		ret:bool
 		case type
-			when null, "screen", "rtsp", "webrtc"
+			when null, "screen", "rtsp", "webm"
 				ret = true
 			default
 				warning(@"'$type' is not a valid --sink: must be 'screen' or 'rtsp'")

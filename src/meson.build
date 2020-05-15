@@ -1,15 +1,16 @@
 cc = meson.get_compiler('c')
 
 nvalhalla_sources = files(
-  'redactor.gs',
-  'distancing.gs',
-  'rtspserversink.gs',
-  'cb_redact.c',
   'cb_distancing.c',
+  'cb_redact.c',
+  'distancing.gs',
   'nvalhalla.gs',
+  'redactor.gs',
+  'rtspserversink.gs',
   'setup.gs',
   'utils.gs',
   'validate.gs',
+  'webmserversink.gs',
 )
 
 includes = include_directories('../includes')
@@ -25,6 +26,7 @@ nvalhalla_deps = [
   dependency('gobject-2.0', version: '>=2.0'),
   dependency('gstreamer-1.0', version: '>=1.0'),
   dependency('gstreamer-rtsp-server-1.0', version: '>=1.0'),
+  dependency('gstreamer-pbutils-1.0', version: '>=1.0'),
   # this is needed for the SignalHandler:
   meson.get_compiler('vala').find_library('posix'),
   # this is needed for Math

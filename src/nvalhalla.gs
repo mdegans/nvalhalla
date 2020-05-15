@@ -269,8 +269,12 @@ namespace NValhalla
 					self._sink.set_property("qos", false)
 				when "rtsp"
 					debug("creating rtsp sink bin")
-					self._sink = new NValhalla.Bins.RtspServerSink("rtspsink");
+					self._sink = new NValhalla.Bins.RtspServerSink("rtspsink")
 					print(@"SERVING RTSP ON: $((string)self._sink.uri)")
+				when "webm"
+					debug("creating webm sink bin")
+					self._sink = new NValhalla.Bins.WebmServerSink("webmsink")
+					print(@"SERVING WEBM ON: $((string)self._sink.uri)")
 				default
 					critical(@"--sink validator is broken. please report.")
 					self.quit()
