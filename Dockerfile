@@ -1,7 +1,9 @@
 FROM nvcr.io/nvidia/deepstream:5.0-dp-20.04-devel
 
+ARG SRCDIR="/opt/nvalhalla/source"
+
 # set up source dir and copy source
-WORKDIR /opt/nvalhalla/source
+WORKDIR ${SRCDIR}
 COPY meson.build COPYING VERSION ./
 COPY docs ./docs/
 COPY includes ./includes/
@@ -46,6 +48,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ninja test \
     && ninja install \
     && ninja clean \
+    && rm -rf ${SRCDIR} \
+    && cd / \
     && pip3 uninstall -y meson \
     && apt-get purge -y --autoremove \
     git \
@@ -59,7 +63,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     valac \
     && rm -rf /var/lib/apt/lists/*
 
-ARG NVALHALLA_VERSION="UNDEFINED use build.sh to build"
+WORKDIR /
+
 
 # drop caps and run nvalhalla using the rtsp sink
 USER nvalhalla:nvalhalla
