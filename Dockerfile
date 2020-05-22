@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && useradd -md /var/nvalhalla -rUs /bin/false nvalhalla \
     && mkdir build \
     && cd build \
-    && meson .. \
+    && meson --prefix=/usr .. \
     && ninja \
     && ninja test \
     && ninja install \
