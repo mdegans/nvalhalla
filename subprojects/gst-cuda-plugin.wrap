@@ -1,3 +1,4 @@
 [wrap-git]
 url = https://github.com/mdegans/gst-cuda-plugin.git
 revision = dev
+depth = 1
