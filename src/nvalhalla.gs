@@ -271,10 +271,10 @@ namespace NValhalla
 					debug("creating rtsp sink bin")
 					self._sink = new NValhalla.Bins.RtspServerSink("rtspsink")
 					print(@"SERVING RTSP ON: $((string)self._sink.uri)")
-				when "webm"
-					debug("creating webm sink bin")
-					self._sink = new NValhalla.Bins.WebmServerSink("webmsink")
-					print(@"SERVING WEBM ON: $((string)self._sink.uri)")
+				when "youtube"
+					debug("creating youtube sink bin")
+					self._sink = new NValhalla.Bins.YouTubeSink("youtubesink")
+					print(@"YOUTUBE STREAM: $((string)self._sink.uri)")
 				default
 					critical(@"--sink validator is broken. please report.")
 					self.quit()

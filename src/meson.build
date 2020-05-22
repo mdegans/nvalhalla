@@ -10,7 +10,7 @@ nvalhalla_sources = files(
   'setup.gs',
   'utils.gs',
   'validate.gs',
-  'webmserversink.gs',
+  'youtubesink.gs',
 )
 
 includes = include_directories('../includes')

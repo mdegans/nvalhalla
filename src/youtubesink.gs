@@ -1,4 +1,4 @@
-/* webmserversink.gs
+/* youtubesink.gs
  *
  * Copyright 2020 Michael de Gans
  *
@@ -37,14 +37,10 @@
 namespace NValhalla.Bins
 
 	/**
-	 * A {@link Gst.Bin} to be used a sink to serve Web-M encoded video
-	 * in a format acceptable to a html5 video tag.
-	 *
-	 * This sink does not work for now, which is why it's option is hiddden.
-	 * on x86 it craps out one way, on Tegra, entirely another. h264 may be
-	 * a better option with this design. The problem seems to be the decoder.
+	 * WIP - A {@link Gst.Bin} to be used a sink to serve RTMP video to a website like
+	 * YouTube.
 	 */
-	class WebmServerSink: Gst.Bin
+	class YouTubeSink: Gst.Bin
 		const DEFAULT_HOST:string = "0.0.0.0"
 		const DEFAULT_PORT:int = 8080
 
