@@ -1,7 +1,6 @@
 cc = meson.get_compiler('c')
 
 nvalhalla_sources = files(
-  'cb_distancing.c',
   'cb_redact.c',
   'distancing.gs',
   'nvalhalla.gs',

@@ -32,9 +32,6 @@
 
 [indent = 0]
 
-// buffer callbacks from cb_buffer.h
-def extern on_buffer_osd_distance(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
-
 namespace NValhalla.Bins
 
 	// TODO(mdegans): common base class for Distancing and Redactor
@@ -57,6 +54,8 @@ namespace NValhalla.Bins
 		const PROTO_BASENAME:string = "resnet10.prototxt"
 		const LABEL_BASENAME:string = "labels.txt"
 		const CALIB_BASENAME:string = "cal_trt.bin"
+		const DEFAULT_CLASS_ID:int = 2
+
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
 
@@ -65,6 +64,9 @@ namespace NValhalla.Bins
 
 		/** nvmultistreamtiler to tile the multiple streams */
 		tiler:dynamic Gst.Element
+
+		/** dsdistance element to add drawing metadata for the osd */
+		distance:dynamic Gst.Element
 
 		/** nvvideoconvert for the osd */
 		osdconv:Gst.Element
@@ -132,6 +134,15 @@ namespace NValhalla.Bins
 				self.tiler.height = value
 
 		/**
+		 * set/get the class id of a person
+		 */
+		prop class_id:int
+			get
+				return self.distance.class_id
+			set
+				self.distance.class_id = value
+
+		/**
 		 * construct a new Redactor {@link Gst.Bin}
 		 *
 		 * @param name a name for this or null for no name
@@ -167,6 +178,11 @@ namespace NValhalla.Bins
 			self.width = NValhalla.App.WIDTH
 			self.height = NValhalla.App.HEIGHT
 
+			self.distance = Gst.ElementFactory.make("dsdistance", "distance")
+			if self.distance == null or not self.add(self.distance)
+				error("could not creat or add dsdistance element")
+			self.distance.class_id = DEFAULT_CLASS_ID
+
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
 			if self.osdconv == null or not self.add(self.osdconv)
@@ -178,14 +194,8 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.tracker, self.tiler, self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
-
-			// connect the buffer callback to the sink pad
-			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
-			if osd_sink_pad == null
-				error(@"$(self.name) failed to get osd sink pad")
-			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_distance)
+			if not self.pie.link_many(self.tracker, self.tiler, self.distance, self.osdconv, self.osd)
+				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! dsdistance ! nvvideoconvert ! nvdsosd")
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one
