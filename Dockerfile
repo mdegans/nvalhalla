@@ -65,6 +65,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /
 
+ARG NVALHALLA_VERSION="UNDEFINED use docker_build.sh to build"
 
 # drop caps and run nvalhalla using the rtsp sink
 USER nvalhalla:nvalhalla
