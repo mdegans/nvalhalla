@@ -36,6 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     valac \
     && pip3 install meson \
     && chmod -R o-w /opt/nvidia/deepstream/deepstream/samples /opt/nvidia/deepstream/deepstream/sources \
+    && echo "/opt/nvidia/deepstream/deepstream/lib" > /etc/ld.so.conf.d/deepstream.conf \
+    && ldconfig \
     && useradd -md /var/nvalhalla -rUs /bin/false nvalhalla \
     && mkdir build \
     && cd build \
@@ -54,7 +56,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ninja-build \
     python3-pip \
     python3-setuptools \
-    valac
+    valac \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG NVALHALLA_VERSION="UNDEFINED use build.sh to build"
 
