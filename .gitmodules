@@ -1,0 +1,3 @@
+[submodule "subprojects/gst-cuda-plugin"]
+	path = subprojects/gst-cuda-plugin
+	url = git@github.com:mdegans/gst-cuda-plugin.git
