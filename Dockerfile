@@ -10,6 +10,7 @@ COPY nvinfer_configs ./nvinfer_configs/
 COPY scripts ./scripts/
 COPY test ./test/
 COPY src ./src/
+COPY subprojects ./subprojects/
 
 # install build dependencies, build, install, and uninstall build deps
 # (all in one layer so as not to increase size)
@@ -23,6 +24,7 @@ COPY src ./src/
 # libgstreamer-plugins-bad1.0-0 \
 # suspect the webrtcbin plugin is broken
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     libgee-0.8-2 \
     libgee-0.8-dev \
     libglib2.0-dev \
@@ -44,6 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ninja clean \
     && pip3 uninstall -y meson \
     && apt-get purge -y --autoremove \
+    git \
     libgee-0.8-dev \
     libglib2.0-dev \
     libgstreamer1.0-dev \
