@@ -16,7 +16,6 @@ readonly TAG_FULL="$TAG_BASE:$VERSION"
 echo "Building $TAG_FULL from $DOCKERFILE"
 
 docker build --rm -f $DOCKERFILE \
-    --build-arg NVALHALLA_VERSION=$VERSION \
     -t $TAG_FULL \
     $THIS_DIR
 docker tag "$TAG_FULL" "$TAG_BASE:latest"
