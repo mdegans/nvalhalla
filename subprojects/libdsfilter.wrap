@@ -1,4 +1,4 @@
 [wrap-git]
 url = https://github.com/mdegans/libdsfilter.git
-revision = dev
+revision = master
 depth = 1
