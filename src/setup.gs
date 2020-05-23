@@ -29,8 +29,8 @@
 
 namespace NValhalla.Setup
 
-	// TODO(mdegans): define prefix at build time
-	const PREFIX:string = "/usr/local"
+	// FIXME(mdegans): find a way to get this from the environment
+	const PREFIX:string = "/usr"
 	const MODEL_DIR:string = PREFIX + "/share/nvalhalla/models"
 	const NVINFER_CONFIG_DIR:string = PREFIX + "/share/nvalhalla/nvinfer_configs"
 	const SCRIPTS_DIR:string = PREFIX + "/share/nvalhalla/scripts"
