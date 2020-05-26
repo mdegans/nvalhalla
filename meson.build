@@ -26,8 +26,6 @@ if run_command('cat', '/proc/device-tree/nvidia,dtsfilename').stdout().contains(
   )
 endif
 
-gst_cuda_plugin_proj = subproject('gst-cuda-plugin')
-
 subdir('src')
 subdir('test')
 subdir('docs')

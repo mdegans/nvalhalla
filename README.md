@@ -6,10 +6,17 @@ Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4
 
 Distancing mode can be enabled by adding `--kenneth` as a flag. Guaranteed to [blow the Covid away](https://www.youtube.com/watch?v=uY6INyOaLGs). Distancing mode uses an int8 quantized model packaged with DeepStream, so performance should be much better than the redaction mode.
 
+Quantized redaction model coming soon!
+
 ## Requirements
 
 - hardware: An NVIDIA device capable of running DeepStream (tested on Jetson Nano, Jetson Xavier, and x86-64 NVIDIA Docker).
 - software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-5.0 valac meson`
+- gst-cuda-plugin >= 0.2: Available [here](https://github.com/mdegans/gst-cuda-plugin) (contains dsdistance and friends).
+- libdsfilter >= 0.2: Available [here](https://github.com/mdegans/libdsfilter) (required by gst-cuda-filter).
+- libdistanceproto >= 0.2: Available [here](https://github.com/mdegans/libdistanceproto) (required by libdsfilter).
+
+TODO(mdegans): handy script to build and install all of the above.
 
 note: if running with Docker, the software listed above does not need to be installed. Also, if installing on x86-64, deepstream-5.0 must be [download and installed manually](https://developer.nvidia.com/deepstream-sdk) as it is not in Nvidia's apt repositories.
 
@@ -27,7 +34,7 @@ ninja
 sudo ninja install
 ```
 
-(this installs to `/usr` prefix, same as make)
+(this installs to `/usr` prefix. alternative prefixes are not supported but will be soon)
 
 `sudo ninja uninstall` can be used to uninstall if you keep the build directory around.
 
