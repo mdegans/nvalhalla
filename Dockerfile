@@ -1,5 +1,7 @@
 # FROM registry.hub.docker.com/mdegans/gstcudaplugin:latest
-FROM mdegans/gstcudaplugin:latest
+ARG GSTCUDAPLUGIN_TAG="latest"
+ARG REPO_BASE="registry.hub.docker.com/"
+FROM ${REPO_BASE}mdegans/gstcudaplugin:${GSTCUDAPLUGIN_TAG}
 
 ARG SRCDIR="/usr/src/nvalhalla"
 
@@ -49,9 +51,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && pip3 uninstall -y meson \
     && apt-get purge -y --autoremove \
     libgee-0.8-dev \
-    libglib2.0-dev \
-    libgstreamer1.0-dev \
-    libgstrtspserver-1.0-dev \
     ninja-build \
     python3-pip \
     python3-setuptools \
