@@ -45,6 +45,9 @@ namespace NValhalla.Bins
 	 * "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
 	 */
 	class Distancing:Gst.Bin
+		// TODO(mdegans): hook this up as a signal
+		//  (never done that before, but I know it's possible)
+		//  delegate ResultsCallback (results: string) : bool
 
 		// constants needed by the distancing
 		const CONFIG_SUBDIR:string = "deepstream-5.0"
@@ -68,6 +71,12 @@ namespace NValhalla.Bins
 		/** dsdistance element to add drawing metadata for the osd */
 		distance:dynamic Gst.Element
 
+		/** dsprotopayload element to convert the metadata to string */
+		payload:dynamic Gst.Element
+
+		/** payloadbroker element to get the metadata */
+		broker:dynamic Gst.Element
+
 		/** nvvideoconvert for the osd */
 		osdconv:Gst.Element
 
@@ -82,7 +91,7 @@ namespace NValhalla.Bins
 		prop readonly config:dict of string,string
 
 		/** the pad probe id for the buffer callback */
-		prop readonly probe_id:ulong
+		_probe_id:ulong?
 
 		/**
 		 * ''get'' the {@link pie} ''batch-size''
@@ -156,6 +165,9 @@ namespace NValhalla.Bins
 			if name != null
 				self.name = name
 
+			// set the probe_id to null
+			self._probe_id = null
+
 			// create and add the primary inference element
 			self.pie = Gst.ElementFactory.make("nvinfer", "pie")
 			if self.pie == null or not self.add(self.pie)
@@ -178,10 +190,23 @@ namespace NValhalla.Bins
 			self.width = NValhalla.App.WIDTH
 			self.height = NValhalla.App.HEIGHT
 
+			// create the distancing element
 			self.distance = Gst.ElementFactory.make("dsdistance", "distance")
 			if self.distance == null or not self.add(self.distance)
 				error("could not creat or add dsdistance element")
 			self.distance.class_id = DEFAULT_CLASS_ID
+
+			// create the metadata payload elemnet
+			self.payload = Gst.ElementFactory.make("dsprotopayload", "payload")
+			if self.payload == null or not self.add(self.payload)
+				error("could not create or add payload converter")
+			
+			// create the payload broker element
+			// TODO(mdegans): test with Nvidia's kafka broker and make sure
+			//  the payload is attached as nvidia's elements expect
+			self.broker = Gst.ElementFactory.make("payloadbroker", "broker")
+			if self.broker == null or not self.add(self.broker)
+				error("could not create or add payload broker")
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
@@ -194,8 +219,18 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.tracker, self.tiler, self.distance, self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! dsdistance ! nvvideoconvert ! nvdsosd")
+			if not self.pie.link_many( \
+					self.tracker, self.tiler, self.distance, self.payload, \
+					self.broker, self.osdconv, self.osd)
+				error(@"$(self.name) failed to link elements")
+
+			// connect the metadata callback
+			broker_src_pad:Gst.Pad = self.broker.get_static_pad("src")
+			if broker_src_pad == null
+				warning(@"$(self.name) failed to get broker src pad")
+				return
+			self._probe_id = broker_src_pad.add_probe( \
+				Gst.PadProbeType.BUFFER, self._probe_cb)
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one
@@ -220,6 +255,20 @@ namespace NValhalla.Bins
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
+
+		def _probe_cb(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
+			//  if self.broker.results != null
+				// if you want a ton of log spam, enable this:
+				//  debug(self.broker.results)
+				//  there is also a sync issue here where multiple
+				//  identical results can be returned.
+				//  a string based GObject property is possibly not the
+				//  best way to get serized data out, but it works in
+				//  a pinch.
+				// TODO(mdegans): file logging? Network broker?
+				//  both are probably better off in the element itself
+				//  with the property just setting the filename/network uri
+			return Gst.PadProbeReturn.OK
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
 		/**
