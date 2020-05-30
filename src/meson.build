@@ -6,10 +6,10 @@ nvalhalla_sources = files(
   'nvalhalla.gs',
   'redactor.gs',
   'rtspserversink.gs',
-  'setup.gs',
   'utils.gs',
   'validate.gs',
   'youtubesink.gs',
+  # 'websinkbin.vala',
 )
 
 includes = include_directories('../includes')
@@ -33,6 +33,19 @@ nvalhalla_deps = [
   cc.find_library('nvds_meta', dirs: ds_libdir),
   cc.find_library('nvdsgst_meta', dirs: ds_libdir),
 ]
+
+# replace the prefix with the actual install prefix
+# this isn't perfect (the binary isn't portable after build).
+# but it's good enough for now and better than a string const
+setup_gs = configure_file(
+  input : 'setup.gs',
+  output : 'setup.gs',
+  configuration : {
+  'version': meson.project_version(),
+  'prefix': get_option('prefix'),
+  }
+)
+nvalhalla_sources += setup_gs
 
 executable('nvalhalla', 'main.gs', nvalhalla_sources,
   vala_args: [

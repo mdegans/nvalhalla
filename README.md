@@ -29,12 +29,10 @@ git clone https://github.com/mdegans/nvalhalla.git
 cd nvalhalla
 mkdir build
 cd build
-meson --prefix=/usr ..
+meson ..
 ninja
 sudo ninja install
 ```
-
-(this installs to `/usr` prefix. alternative prefixes are not supported but will be soon)
 
 `sudo ninja uninstall` can be used to uninstall if you keep the build directory around.
 

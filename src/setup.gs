@@ -29,8 +29,9 @@
 
 namespace NValhalla.Setup
 
-	// FIXME(mdegans): find a way to get this from the environment
-	const PREFIX:string = "/usr"
+	// These two strings the build system will replace with configure_file
+	const VERSION:string = "@version@"
+	const PREFIX:string = "@prefix@"
 	const MODEL_DIR:string = PREFIX + "/share/nvalhalla/models"
 	const NVINFER_CONFIG_DIR:string = PREFIX + "/share/nvalhalla/nvinfer_configs"
 	const SCRIPTS_DIR:string = PREFIX + "/share/nvalhalla/scripts"
