@@ -4,6 +4,7 @@ project('nvalhalla', ['c', 'vala'],
     'head', '-n', '1', files('VERSION'),
   ).stdout().strip(),
   meson_version: '>= 0.49.0',
+  license: 'MIT',
 )
 
 if target_machine.cpu_family() == 'aarch64'

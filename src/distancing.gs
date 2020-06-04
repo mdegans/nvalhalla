@@ -92,6 +92,8 @@ namespace NValhalla.Bins
 
 		/** the pad probe id for the buffer callback */
 		_probe_id:ulong?
+		/** the last payload from the probe*/
+		_last_probe_results:string?;
 
 		/**
 		 * ''get'' the {@link pie} ''batch-size''
@@ -165,8 +167,8 @@ namespace NValhalla.Bins
 			if name != null
 				self.name = name
 
-			// set the probe_id to null
 			self._probe_id = null
+			self._last_probe_results = null
 
 			// create and add the primary inference element
 			self.pie = Gst.ElementFactory.make("nvinfer", "pie")
@@ -256,18 +258,19 @@ namespace NValhalla.Bins
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
 
+		// so, right now the distancing plugin doesn't skip frames
+		// like the tracker does, but this will be added, further enhancing
+		// it's performance, however for now, to avoid duplicate
+		// results we only print if this result is not equal to the
+		// previous
+		// TODO(mdegans): file logging? Network broker?
+		//  both are probably better off in the element itself
+		//  with the property just setting the filename/network uri
 		def _probe_cb(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
-			//  if self.broker.results != null
-				// if you want a ton of log spam, enable this:
-				//  debug(self.broker.results)
-				//  there is also a sync issue here where multiple
-				//  identical results can be returned.
-				//  a string based GObject property is possibly not the
-				//  best way to get serized data out, but it works in
-				//  a pinch.
-				// TODO(mdegans): file logging? Network broker?
-				//  both are probably better off in the element itself
-				//  with the property just setting the filename/network uri
+			results:string = self.broker.results;
+			if results != null && results != self._last_probe_results
+				debug(self.broker.results)
+				self._last_probe_results = results
 			return Gst.PadProbeReturn.OK
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
