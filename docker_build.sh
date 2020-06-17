@@ -20,13 +20,23 @@ fi
 readonly DOCKERFILE="$THIS_DIR/Dockerfile"
 readonly VERSION=$(head -n 1 $THIS_DIR/VERSION)
 readonly TAG_BASE="$AUTHOR/$PROJ_NAME"
-readonly TAG_FULL="$TAG_BASE:$VERSION"
+TAG_FULL="$TAG_BASE:$VERSION"
+
+if [[ "$(arch)" == "aarch64" ]]; then
+    readonly GSTCUDAPLUGIN_TAG="dev-tegra"
+    readonly TAG_SUFFIX="${TAG_SUFFIX}-tegra"
+    readonly TAG_FULL="${TAG_FULL}-tegra"
+else
+    readonly GSTCUDAPLUGIN_TAG="dev-x86"
+    readonly TAG_SUFFIX="${TAG_SUFFIX}-x86"
+    readonly TAG_FULL="${TAG_FULL}-x86"
+fi
 
 echo "Building $TAG_FULL from $DOCKERFILE"
 
-docker build --rm -f $DOCKERFILE \
+docker build --pull --rm -f $DOCKERFILE \
     --build-arg REPO_BASE=$REPO_BASE \
-    --build-arg GSTCUDAPLUGIN_TAG=$TAG_SUFFIX \
+    --build-arg GSTCUDAPLUGIN_TAG=$GSTCUDAPLUGIN_TAG \
     -t $TAG_FULL \
     $THIS_DIR
 docker tag "$TAG_FULL" "$TAG_BASE:$TAG_SUFFIX"
