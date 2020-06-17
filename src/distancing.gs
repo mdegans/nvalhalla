@@ -71,10 +71,7 @@ namespace NValhalla.Bins
 		/** dsdistance element to add drawing metadata for the osd */
 		distance:dynamic Gst.Element
 
-		/** dsprotopayload element to convert the metadata to string */
-		payload:dynamic Gst.Element
-
-		/** payloadbroker element to get the metadata */
+		/** payloadbroker element to broker the metadata */
 		broker:dynamic Gst.Element
 
 		/** nvvideoconvert for the osd */
@@ -198,17 +195,14 @@ namespace NValhalla.Bins
 				error("could not creat or add dsdistance element")
 			self.distance.class_id = DEFAULT_CLASS_ID
 
-			// create the metadata payload elemnet
-			self.payload = Gst.ElementFactory.make("dsprotopayload", "payload")
-			if self.payload == null or not self.add(self.payload)
-				error("could not create or add payload converter")
-			
 			// create the payload broker element
 			// TODO(mdegans): test with Nvidia's kafka broker and make sure
 			//  the payload is attached as nvidia's elements expect
 			self.broker = Gst.ElementFactory.make("payloadbroker", "broker")
 			if self.broker == null or not self.add(self.broker)
 				error("could not create or add payload broker")
+			self.broker.mode = 2
+			self.broker.basepath = "/tmp/nvalhallameta"
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
@@ -222,17 +216,9 @@ namespace NValhalla.Bins
 
 			// link all elements
 			if not self.pie.link_many( \
-					self.tracker, self.tiler, self.distance, self.payload, \
+					self.tracker, self.tiler, self.distance, \
 					self.broker, self.osdconv, self.osd)
 				error(@"$(self.name) failed to link elements")
-
-			// connect the metadata callback
-			broker_src_pad:Gst.Pad = self.broker.get_static_pad("src")
-			if broker_src_pad == null
-				warning(@"$(self.name) failed to get broker src pad")
-				return
-			self._probe_id = broker_src_pad.add_probe( \
-				Gst.PadProbeType.BUFFER, self._probe_cb)
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one
@@ -257,21 +243,6 @@ namespace NValhalla.Bins
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
 			
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
-
-		// so, right now the distancing plugin doesn't skip frames
-		// like the tracker does, but this will be added, further enhancing
-		// it's performance, however for now, to avoid duplicate
-		// results we only print if this result is not equal to the
-		// previous
-		// TODO(mdegans): file logging? Network broker?
-		//  both are probably better off in the element itself
-		//  with the property just setting the filename/network uri
-		def _probe_cb(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
-			results:string = self.broker.results;
-			if results != null && results != self._last_probe_results
-				debug(self.broker.results)
-				self._last_probe_results = results
-			return Gst.PadProbeReturn.OK
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
 		/**
