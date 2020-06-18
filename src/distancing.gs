@@ -58,6 +58,10 @@ namespace NValhalla.Bins
 		const LABEL_BASENAME:string = "labels.txt"
 		const CALIB_BASENAME:string = "cal_trt.bin"
 		const DEFAULT_CLASS_ID:int = 2
+		/** mode 1 = protobuf, mode 2 = csv, mode 0 = deprecated  */
+		const DEFAULT_BROKER_MODE:int = 1
+		/** default meta base filename minus extension */
+		const DEFAULT_META_BASENAME:string = "metadata"
 
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
@@ -193,8 +197,13 @@ namespace NValhalla.Bins
 			self.broker = Gst.ElementFactory.make("payloadbroker", "broker")
 			if self.broker == null or not self.add(self.broker)
 				error("could not create or add payload broker")
-			self.broker.mode = 2
-			self.broker.basepath = "/tmp/nvalhallameta"
+			self.broker.mode = DEFAULT_BROKER_MODE
+			var time = new DateTime.now_utc()
+			try
+				self.broker.basepath = GLib.Path.build_filename( \
+					NValhalla.Setup.meta_dir(), @"$(DEFAULT_META_BASENAME).$(time.to_unix())")
+			except err:FileError
+				warning(err.message)
 
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
