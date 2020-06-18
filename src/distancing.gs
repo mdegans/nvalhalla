@@ -87,11 +87,6 @@ namespace NValhalla.Bins
 		 */
 		prop readonly config:dict of string,string
 
-		/** the pad probe id for the buffer callback */
-		_probe_id:ulong?
-		/** the last payload from the probe*/
-		_last_probe_results:string?;
-
 		/**
 		 * ''get'' the {@link pie} ''batch-size''
 		 *
@@ -163,9 +158,6 @@ namespace NValhalla.Bins
 				error("Redactor setup failed because: %s\n", err.message)
 			if name != null
 				self.name = name
-
-			self._probe_id = null
-			self._last_probe_results = null
 
 			// create and add the primary inference element
 			self.pie = Gst.ElementFactory.make("nvinfer", "pie")
@@ -241,7 +233,7 @@ namespace NValhalla.Bins
 				error(@"$(self.name) could not create ghost sink pad from $(self.osd.name)")
 			if not self.add_pad(src_pad)
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
-			
+
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
