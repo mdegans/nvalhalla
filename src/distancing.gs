@@ -37,12 +37,13 @@ namespace NValhalla.Bins
 	// TODO(mdegans): common base class for Distancing and Redactor
 	// TODO(mdegans): consider separating distancing and tiling
 	/**
-	 * A {@link Gst.Bin} that redacts and tiles multiple video streams. it:
+	 * A {@link Gst.Bin} that calculates distnacing for multiple video streams. it:
 	 *
 	 * * has static ghost pads and can be linked with {@link Gst.Element.link}.
 	 * * expects a nvstreammux before and some kind of sink after.
 	 * * It's string approximation would be:
-	 * "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
+	 *   "nvinfer ! nvtracker ! nvmultistreamtiler ! dsdistance ! payloadbroker ! 
+	 *   nvvideoconvert ! nvdsosd"
 	 */
 	class Distancing:Gst.Bin
 		// TODO(mdegans): hook this up as a signal
