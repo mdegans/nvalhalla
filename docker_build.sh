@@ -17,16 +17,17 @@ else
     # naked pull in dev
     REPO_BASE=""
 fi
-readonly DOCKERFILE="$THIS_DIR/Dockerfile"
 readonly VERSION=$(head -n 1 $THIS_DIR/VERSION)
 readonly TAG_BASE="$AUTHOR/$PROJ_NAME"
 TAG_FULL="$TAG_BASE:$VERSION"
 
 if [[ "$(arch)" == "aarch64" ]]; then
+    readonly DOCKERFILE="$THIS_DIR/tegra.Dockerfile"
     readonly GSTCUDAPLUGIN_TAG="dev-tegra"
     readonly TAG_SUFFIX="${TAG_SUFFIX}-tegra"
     readonly TAG_FULL="${TAG_FULL}-tegra"
 else
+    readonly DOCKERFILE="$THIS_DIR/x86.Dockerfile"
     readonly GSTCUDAPLUGIN_TAG="dev-x86"
     readonly TAG_SUFFIX="${TAG_SUFFIX}-x86"
     readonly TAG_FULL="${TAG_FULL}-x86"
