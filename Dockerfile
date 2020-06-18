@@ -21,12 +21,6 @@ COPY src ./src/
 # yes a multi-stage build could also be used, this is the "old" way
 # amont other things, we break interactive login capability.
 
-# TODO(mdegans): figure out why libnice plugins like webrtcbin don't work
-# I figured it was dependencies, but even with this it fails:
-# libnice10 \
-# libgstreamer-plugins-good1.0-0 \
-# libgstreamer-plugins-bad1.0-0 \
-# suspect the webrtcbin plugin is broken
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgee-0.8-2 \
     libgee-0.8-dev \
