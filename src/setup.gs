@@ -62,6 +62,17 @@ namespace NValhalla.Setup
 		return dir
 
 	/**
+	 * Create and/or return a ''user'' meta dir (~/.nvalhalla/meta)
+	 *
+	 * @return an absolute path
+	 * @throws GLib.FileError.FAILED on failure to create directory
+	 */
+	def meta_dir():string raises GLib.FileError
+		dir:string = GLib.Path.build_filename(nvalhalla_dir(), "meta")
+		NValhalla.Utils.mkdirs(dir)
+		return dir
+
+	/**
 	 * Create and/or return a ''user'' model dir (~/.nvalhalla/models)
 	 *
 	 * @return an absolute path
