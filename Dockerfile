@@ -19,8 +19,10 @@ COPY src ./src/
 # install build dependencies, build, install, and uninstall build deps
 # (all in one layer so as not to increase size)
 # yes a multi-stage build could also be used, this is the "old" way
-# amont other things, we break interactive login capability.
-
+# among other things in this layer, we break interactive login capability.
+# if a development image is needed or your internet is slow, this layer
+# should probably be split up and the above copies moved into the middle
+# (after deps install, just before the build)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgee-0.8-2 \
     libgee-0.8-dev \
