@@ -40,15 +40,14 @@ sudo ninja install
 
 ## Running in Docker
 
-Example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
+Redaction example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
 ```
-docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla: --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
 
 (then access rtsp://hostname:8554/nvalhalla from an rtsp client like VLC or gst-play-1.0)
 
 Notes:
-- So far this is only tested on x86-64 NVIDIA Docker. The Dockerfile or meson.build may need to be modified for Tegra Docker support.
 - The Image is fat AF, but that's because the base image is as well. It should pull quick if you already have the base images.
 - The entrypoint defaults to --rtsp sink. Using a graphical sink in Docker is not recommended.
 - Interactive login is disabled, but there are probabaly ways around this if you're clever.
@@ -58,11 +57,24 @@ Notes:
 
 ## Examples
 
+**note:** all these examples require youtube-dl since youtube has a wealth of good content for testing. Alternatively rtsp sources can be used with the --uri parameter (or any uri supported by uridecodebin).
+
 You can redact **multiple youtube streams** like this, provided you have youtube-dl installed (`pip3 install youtube-dl`) and enough bandwith:
 ```
 nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
-![four youtube streams at once](https://i.imgur.com/7eo0NR5.jpg)
+
+**note:** The only supported sink on x86 docker currently is rtsp.
+
+To run social distancing on multiple sources **on x86**.
+```
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-x86 --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+```
+
+**On Tegra**, screen output is supported with `--sink screen`. X11 does not need to be running, so the following will work even in multi-user.target if a display is connected:
+```
+docker run --runtime nvidia -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-tegra --sink screen --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+```
 
 **Local video streams** can also be used like this:
 ```
