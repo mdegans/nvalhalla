@@ -23,12 +23,12 @@ TAG_FULL="$TAG_BASE:$VERSION"
 
 if [[ "$(arch)" == "aarch64" ]]; then
     readonly DOCKERFILE="$THIS_DIR/tegra.Dockerfile"
-    readonly GSTCUDAPLUGIN_TAG="0.3.1-aarch64"
+    readonly GSTCUDAPLUGIN_TAG="0.3.4-aarch64"
     readonly TAG_SUFFIX="${TAG_SUFFIX}-tegra"
     readonly TAG_FULL="${TAG_FULL}-tegra"
 else
     readonly DOCKERFILE="$THIS_DIR/x86.Dockerfile"
-    readonly GSTCUDAPLUGIN_TAG="0.3.1-x86_64"
+    readonly GSTCUDAPLUGIN_TAG="0.3.4-x86_64"
     readonly TAG_SUFFIX="${TAG_SUFFIX}-x86"
     readonly TAG_FULL="${TAG_FULL}-x86"
 fi
