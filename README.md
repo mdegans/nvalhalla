@@ -6,10 +6,19 @@ Usage is `nvalhalla --uri rtsp://uri-goes-here/ --uri file://local/file/here.mp4
 
 Distancing mode can be enabled by adding `--kenneth` as a flag. Guaranteed to [blow the Covid away](https://www.youtube.com/watch?v=uY6INyOaLGs). Distancing mode uses an int8 quantized model packaged with DeepStream, so performance should be much better than the redaction mode.
 
+Quantized redaction model coming soon!
+
 ## Requirements
+
+(see below for Docker instructions)
 
 - hardware: An NVIDIA device capable of running DeepStream (tested on Jetson Nano, Jetson Xavier, and x86-64 NVIDIA Docker).
 - software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-5.0 valac meson`
+- gst-cuda-plugin >= 0.2: Available [here](https://github.com/mdegans/gst-cuda-plugin) (contains dsdistance and friends).
+- libdsfilter >= 0.2: Available [here](https://github.com/mdegans/libdsfilter) (required by gst-cuda-filter).
+- libdistanceproto >= 0.2: Available [here](https://github.com/mdegans/libdistanceproto) (required by libdsfilter).
+
+TODO(mdegans): handy script to build and install all of the above.
 
 note: if running with Docker, the software listed above does not need to be installed. Also, if installing on x86-64, deepstream-5.0 must be [download and installed manually](https://developer.nvidia.com/deepstream-sdk) as it is not in Nvidia's apt repositories.
 
@@ -27,21 +36,18 @@ ninja
 sudo ninja install
 ```
 
-(this installs to `/usr/local` prefix, same as make)
-
 `sudo ninja uninstall` can be used to uninstall if you keep the build directory around.
 
 ## Running in Docker
 
-Example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
+Redaction example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
 ```
-docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla: --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
 
 (then access rtsp://hostname:8554/nvalhalla from an rtsp client like VLC or gst-play-1.0)
 
 Notes:
-- So far this is only tested on x86-64 NVIDIA Docker. The Dockerfile or meson.build may need to be modified for Tegra Docker support.
 - The Image is fat AF, but that's because the base image is as well. It should pull quick if you already have the base images.
 - The entrypoint defaults to --rtsp sink. Using a graphical sink in Docker is not recommended.
 - Interactive login is disabled, but there are probabaly ways around this if you're clever.
@@ -51,11 +57,24 @@ Notes:
 
 ## Examples
 
+**note:** all these examples require youtube-dl since youtube has a wealth of good content for testing. Alternatively rtsp sources can be used with the --uri parameter (or any uri supported by uridecodebin).
+
 You can redact **multiple youtube streams** like this, provided you have youtube-dl installed (`pip3 install youtube-dl`) and enough bandwith:
 ```
 nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
-![four youtube streams at once](https://i.imgur.com/7eo0NR5.jpg)
+
+**note:** The only supported sink on x86 docker currently is rtsp.
+
+To run social distancing on multiple sources **on x86**.
+```
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-x86 --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+```
+
+**On Tegra**, screen output is supported with `--sink screen`. X11 does not need to be running, so the following will work even in multi-user.target if a display is connected:
+```
+docker run --runtime nvidia -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-tegra --sink screen --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+```
 
 **Local video streams** can also be used like this:
 ```

@@ -29,8 +29,9 @@
 
 namespace NValhalla.Setup
 
-	// TODO(mdegans): define prefix at build time
-	const PREFIX:string = "/usr/local"
+	// These two strings the build system will replace with configure_file
+	const VERSION:string = "@version@"
+	const PREFIX:string = "@prefix@"
 	const MODEL_DIR:string = PREFIX + "/share/nvalhalla/models"
 	const NVINFER_CONFIG_DIR:string = PREFIX + "/share/nvalhalla/nvinfer_configs"
 	const SCRIPTS_DIR:string = PREFIX + "/share/nvalhalla/scripts"
@@ -57,6 +58,17 @@ namespace NValhalla.Setup
 	 */
 	def config_dir():string raises GLib.FileError
 		dir:string = GLib.Path.build_filename(nvalhalla_dir(), "configs")
+		NValhalla.Utils.mkdirs(dir)
+		return dir
+
+	/**
+	 * Create and/or return a ''user'' meta dir (~/.nvalhalla/meta)
+	 *
+	 * @return an absolute path
+	 * @throws GLib.FileError.FAILED on failure to create directory
+	 */
+	def meta_dir():string raises GLib.FileError
+		dir:string = GLib.Path.build_filename(nvalhalla_dir(), "meta")
 		NValhalla.Utils.mkdirs(dir)
 		return dir
 

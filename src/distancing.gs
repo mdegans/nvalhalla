@@ -32,22 +32,23 @@
 
 [indent = 0]
 
-// buffer callbacks from cb_buffer.h
-def extern on_buffer_osd_distance(pad:Gst.Pad, info:Gst.PadProbeInfo): Gst.PadProbeReturn
-
 namespace NValhalla.Bins
 
 	// TODO(mdegans): common base class for Distancing and Redactor
 	// TODO(mdegans): consider separating distancing and tiling
 	/**
-	 * A {@link Gst.Bin} that redacts and tiles multiple video streams. it:
+	 * A {@link Gst.Bin} that calculates distnacing for multiple video streams. it:
 	 *
 	 * * has static ghost pads and can be linked with {@link Gst.Element.link}.
 	 * * expects a nvstreammux before and some kind of sink after.
 	 * * It's string approximation would be:
-	 * "nvinfer ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd".
+	 *   "nvinfer ! nvtracker ! nvmultistreamtiler ! dsdistance ! payloadbroker ! 
+	 *   nvvideoconvert ! nvdsosd"
 	 */
 	class Distancing:Gst.Bin
+		// TODO(mdegans): hook this up as a signal
+		//  (never done that before, but I know it's possible)
+		//  delegate ResultsCallback (results: string) : bool
 
 		// constants needed by the distancing
 		const CONFIG_SUBDIR:string = "deepstream-5.0"
@@ -57,6 +58,12 @@ namespace NValhalla.Bins
 		const PROTO_BASENAME:string = "resnet10.prototxt"
 		const LABEL_BASENAME:string = "labels.txt"
 		const CALIB_BASENAME:string = "cal_trt.bin"
+		const DEFAULT_CLASS_ID:int = 2
+		/** mode 1 = protobuf, mode 2 = csv, mode 0 = deprecated  */
+		const DEFAULT_BROKER_MODE:int = 1
+		/** default meta base filename minus extension */
+		const DEFAULT_META_BASENAME:string = "metadata"
+
 		/** primary nvinfer engine */
 		pie:dynamic Gst.Element
 
@@ -65,6 +72,12 @@ namespace NValhalla.Bins
 
 		/** nvmultistreamtiler to tile the multiple streams */
 		tiler:dynamic Gst.Element
+
+		/** dsdistance element to add drawing metadata for the osd */
+		distance:dynamic Gst.Element
+
+		/** payloadbroker element to broker the metadata */
+		broker:dynamic Gst.Element
 
 		/** nvvideoconvert for the osd */
 		osdconv:Gst.Element
@@ -78,9 +91,6 @@ namespace NValhalla.Bins
 		 * ''Note:'' for now this only contains the config-file-path.
 		 */
 		prop readonly config:dict of string,string
-
-		/** the pad probe id for the buffer callback */
-		prop readonly probe_id:ulong
 
 		/**
 		 * ''get'' the {@link pie} ''batch-size''
@@ -132,6 +142,15 @@ namespace NValhalla.Bins
 				self.tiler.height = value
 
 		/**
+		 * set/get the class id of a person
+		 */
+		prop class_id:int
+			get
+				return self.distance.class_id
+			set
+				self.distance.class_id = value
+
+		/**
 		 * construct a new Redactor {@link Gst.Bin}
 		 *
 		 * @param name a name for this or null for no name
@@ -167,6 +186,26 @@ namespace NValhalla.Bins
 			self.width = NValhalla.App.WIDTH
 			self.height = NValhalla.App.HEIGHT
 
+			// create the distancing element
+			self.distance = Gst.ElementFactory.make("dsdistance", "distance")
+			if self.distance == null or not self.add(self.distance)
+				error("could not creat or add dsdistance element")
+			self.distance.class_id = DEFAULT_CLASS_ID
+
+			// create the payload broker element
+			// TODO(mdegans): test with Nvidia's kafka broker and make sure
+			//  the payload is attached as nvidia's elements expect
+			self.broker = Gst.ElementFactory.make("payloadbroker", "broker")
+			if self.broker == null or not self.add(self.broker)
+				error("could not create or add payload broker")
+			self.broker.mode = DEFAULT_BROKER_MODE
+			var time = new DateTime.now_utc()
+			try
+				self.broker.basepath = GLib.Path.build_filename( \
+					NValhalla.Setup.meta_dir(), @"$(DEFAULT_META_BASENAME).$(time.to_unix())")
+			except err:FileError
+				warning(err.message)
+
 			// create the converter element
 			self.osdconv = Gst.ElementFactory.make("nvvideoconvert", "osdconv")
 			if self.osdconv == null or not self.add(self.osdconv)
@@ -178,14 +217,10 @@ namespace NValhalla.Bins
 				error(@"$(self.name) failed to create or add nvdsosd element")
 
 			// link all elements
-			if not self.pie.link_many(self.tracker, self.tiler, self.osdconv, self.osd)
-				error(@"$(self.name) faild to link nvinfer ! nvtracker ! nvmultistreamtiler ! nvvideoconvert ! nvdsosd")
-
-			// connect the buffer callback to the sink pad
-			osd_sink_pad:Gst.Pad? = self.osd.get_static_pad("sink")
-			if osd_sink_pad == null
-				error(@"$(self.name) failed to get osd sink pad")
-			self._probe_id = osd_sink_pad.add_probe(Gst.PadProbeType.BUFFER, on_buffer_osd_distance)
+			if not self.pie.link_many( \
+					self.tracker, self.tiler, self.distance, \
+					self.broker, self.osdconv, self.osd)
+				error(@"$(self.name) failed to link elements")
 
 			// ghost (proxy) inner pads to outer pads, since pads have to be on
 			// the same hierarchy in order to be linked (can't an pad inside one
@@ -208,7 +243,7 @@ namespace NValhalla.Bins
 				error(@"$(self.name) could not create ghost sink pad from $(self.osd.name)")
 			if not self.add_pad(src_pad)
 				error(@"could not add $(src_pad.name) ghost pad to $(self.name)")
-			
+
 			Gst.Debug.BIN_TO_DOT_FILE_WITH_TS(self, Gst.DebugGraphDetails.ALL, @"$(self.name).construct_end")
 
 		// TODO(mdegans) patch nvinfer and submit to Nvidia so this isn't necessary
