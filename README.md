@@ -42,8 +42,10 @@ sudo ninja install
 
 Redaction example with youtube sources (youtube-dl needs to be installed on the host with `pip3 install youtube-dl` or similar):
 ```
-docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla: --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
+docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla:latest-x86 --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DPWf4) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=FPs_lU01KoI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=SnMBYMOTwEs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=jYusNNldesc)
 ```
+
+**note:** on Tegra the tag is `latest-tegra` and `--runtime nvidia` must be used instead of `--gpus all`
 
 (then access rtsp://hostname:8554/nvalhalla from an rtsp client like VLC or gst-play-1.0)
 
@@ -68,12 +70,12 @@ nvalhalla --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=awdX61DP
 
 To run social distancing on multiple sources **on x86**.
 ```
-docker run --gpus all -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-x86 --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+docker run --gpus all -p 8554:8554 --rm mdegans/mdegans/nvalhalla:latest-x86 --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
 ```
 
 **On Tegra**, screen output is supported with `--sink screen`. X11 does not need to be running, so the following will work even in multi-user.target if a display is connected:
 ```
-docker run --runtime nvidia -p 8554:8554 --rm mdegans/nvalhalla:v0.1.7-tegra --sink screen --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
+docker run --runtime nvidia -p 8554:8554 --rm mdegans/mdegans/nvalhalla:latest-tegra --sink screen --kenneth --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=F2MYKj_6-rs) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=D3Kh0PFg5bI) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=0ipNbOr82sg) --uri $(youtube-dl -f best -g https://www.youtube.com/watch?v=h57pGct-6gE)
 ```
 
 **Local video streams** can also be used like this:
