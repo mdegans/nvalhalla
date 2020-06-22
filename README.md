@@ -10,6 +10,8 @@ Quantized redaction model coming soon!
 
 ## Requirements
 
+(see below for Docker instructions)
+
 - hardware: An NVIDIA device capable of running DeepStream (tested on Jetson Nano, Jetson Xavier, and x86-64 NVIDIA Docker).
 - software: `sudo apt install libgstreamer1.0-dev libglib2.0-dev libgee-0.8-dev libgstrtspserver-1.0-dev deepstream-5.0 valac meson`
 - gst-cuda-plugin >= 0.2: Available [here](https://github.com/mdegans/gst-cuda-plugin) (contains dsdistance and friends).

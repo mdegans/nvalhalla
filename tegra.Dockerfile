@@ -55,6 +55,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /
 
 # drop caps and run nvalhalla using the rtsp sink
+# on Tegra, it seems we can't drop caps without unexplained
+# ldconfig issues (likely related to the way nvidia-docker works on Tegra)
 ENV G_MESSAGES_DEBUG="all"
 EXPOSE 8554/tcp
 ENTRYPOINT [ "nvalhalla" ]
